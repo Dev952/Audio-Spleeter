@@ -15,6 +15,7 @@ from lib import utils
 
 
 
+
 class Separator(object):
     def __init__(self, model, device=None, batchsize=1, cropsize=256, postprocess=False):
         self.model = model

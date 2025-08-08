@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   Card,
   CardContent,
@@ -9,7 +9,6 @@ import {
   CardFooter,
 } from "@/components/ui/card";
 import AudioControl from "@/components/ui/AudioControl";
-
 
 export default function Home() {
   const [file, setFile] = useState<File | null>(null);
@@ -20,6 +19,45 @@ export default function Home() {
   } | null>(null);
   const [loading, setLoading] = useState(false);
   const [progress, setProgress] = useState<number>(0);
+  const [lyrics, setLyrics] = useState<string[]>([]);
+  const [currentLine, setCurrentLine] = useState(0);
+  const [showLyricsCard, setShowLyricsCard] = useState(false);
+  const [lyricsLoading, setLyricsLoading] = useState(false);
+
+  const handleGenerateLyrics = async () => {
+    if (!result) return;
+
+    setLyricsLoading(true); // start loading
+
+    const res = await fetch("/api/transcribe", {
+      method: "POST",
+      body: JSON.stringify({
+        filePath: `${result.folder}/input.wav`,
+      }),
+      headers: {
+        "Content-Type": "application/json",
+      },
+    });
+
+    const data = await res.json();
+
+    const lines = data.lyrics.split(/(?<=[.?!])\s+/);
+
+    setLyrics(lines);
+    setCurrentLine(0);
+    setShowLyricsCard(true);
+    setLyricsLoading(false); // end loading
+  };
+
+  useEffect(() => {
+    if (!showLyricsCard || currentLine >= lyrics.length) return;
+
+    const interval = setInterval(() => {
+      setCurrentLine((prev) => prev + 1);
+    }, 1000); // 1s per line
+
+    return () => clearInterval(interval);
+  }, [showLyricsCard, currentLine, lyrics.length]);
 
   const handleUpload = async () => {
     if (!file) return;
@@ -194,12 +232,39 @@ export default function Home() {
                 </audio>
               </div>
             </div>
+
+            {/* 🎤 Show Lyrics Button */}
+            <button
+              onClick={handleGenerateLyrics}
+              disabled={lyricsLoading}
+              className={`mt-4 px-6 py-2 rounded-full text-white font-bold transition-all relative
+    ${
+      lyricsLoading
+        ? " animate-pulse bg-purple-800 cursor-not-allowed"
+        : "bg-purple-600 hover:bg-purple-700"
+    }
+  `}
+            >
+              {lyricsLoading ? "Generating..." : "Show Lyrics"}
+            </button>
           </div>
         )}
-          <AudioControl />
+
+        {showLyricsCard && (
+          <Card className="mt-4 w-full max-w-3xl bg-[#2A2A2A] text-white shadow-lg border border-purple-500">
+            <CardHeader>
+              <CardTitle>🎤 Live Lyrics</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-2 text-lg font-medium">
+              {lyrics.slice(0, currentLine).map((line, index) => (
+                <p key={index}>{line}</p>
+              ))}
+            </CardContent>
+          </Card>
+        )}
+
+        <AudioControl />
       </main>
-
-
 
       {/* About Section */}
       <section
