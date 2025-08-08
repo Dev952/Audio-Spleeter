@@ -1,103 +1,221 @@
-import Image from "next/image";
+"use client";
+
+import React, { useState } from "react";
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+  CardFooter,
+} from "@/components/ui/card";
+import AudioControl from "@/components/ui/AudioControl";
+
 
 export default function Home() {
-  return (
-    <div className="font-sans grid grid-rows-[20px_1fr_20px] items-center justify-items-center min-h-screen p-8 pb-20 gap-16 sm:p-20">
-      <main className="flex flex-col gap-[32px] row-start-2 items-center sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={180}
-          height={38}
-          priority
-        />
-        <ol className="font-mono list-inside list-decimal text-sm/6 text-center sm:text-left">
-          <li className="mb-2 tracking-[-.01em]">
-            Get started by editing{" "}
-            <code className="bg-black/[.05] dark:bg-white/[.06] font-mono font-semibold px-1 py-0.5 rounded">
-              src/app/page.tsx
-            </code>
-            .
-          </li>
-          <li className="tracking-[-.01em]">
-            Save and see your changes instantly.
-          </li>
-        </ol>
+  const [file, setFile] = useState<File | null>(null);
+  const [result, setResult] = useState<{
+    folder: string;
+    vocals: string;
+    instrumental: string;
+  } | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [progress, setProgress] = useState<number>(0);
 
-        <div className="flex gap-4 items-center flex-col sm:flex-row">
-          <a
-            className="rounded-full border border-solid border-transparent transition-colors flex items-center justify-center bg-foreground text-background gap-2 hover:bg-[#383838] dark:hover:bg-[#ccc] font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 sm:w-auto"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={20}
-              height={20}
+  const handleUpload = async () => {
+    if (!file) return;
+
+    setLoading(true);
+    setProgress(0);
+
+    const formData = new FormData();
+    formData.append("file", file);
+
+    try {
+      const res = await fetch("/api/separate", {
+        method: "POST",
+        body: formData,
+      });
+
+      if (!res.ok || !res.body) throw new Error("Failed");
+
+      const reader = res.body.getReader();
+      const decoder = new TextDecoder();
+
+      let buffer = "";
+      let finalJson = null;
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+
+        buffer += decoder.decode(value, { stream: true });
+
+        const lines = buffer.split("\n");
+        buffer = lines.pop() || "";
+
+        for (const line of lines) {
+          if (!line.trim()) continue;
+
+          if (line.startsWith("PROGRESS:")) {
+            const parts = line.split(":");
+            const progressValue = parseInt(parts[1]);
+            if (!isNaN(progressValue)) {
+              setProgress(progressValue);
+            }
+          } else {
+            try {
+              const json = JSON.parse(line);
+              if (json.type === "progress") {
+                setProgress(json.value);
+              } else if (json.type === "result") {
+                setResult(json);
+              }
+            } catch (e) {
+              console.warn("Non-JSON line:", line);
+            }
+          }
+        }
+      }
+    } catch (error) {
+      console.error("Upload failed:", error);
+      alert("Upload or processing failed.");
+    }
+
+    setLoading(false);
+  };
+
+  return (
+    <div className="min-h-screen w-full text-white scroll-smooth bg-gradient-to-br from-black via-purple-900 to-purple-800 relative overflow-hidden">
+      {/* Shine background */}
+      <div className="absolute top-0 left-0 w-full h-full z-0 animate-pulse bg-[radial-gradient(circle_at_top_left,_#ffffff10,_transparent_70%)] pointer-events-none" />
+
+      {/* Navbar */}
+      <nav className="w-full px-6 py-6 bg-black/70 text-white flex justify-between items-center shadow-md sticky top-0 z-50 relative overflow-hidden rounded-b-[2rem]">
+        <div className="absolute inset-0 bg-gradient-to-r from-purple-900 via-black to-purple-900 opacity-40 pointer-events-none blur-sm" />
+        <div className="text-2xl font-bold z-10"> 🎶Audio Splitter</div>
+        <ul className="flex space-x-6 text-lg font-medium z-10">
+          <li>
+            <a href="#home" className="hover:text-purple-300 transition">
+              Home
+            </a>
+          </li>
+          <li>
+            <a href="#about" className="hover:text-purple-300 transition">
+              About
+            </a>
+          </li>
+        </ul>
+      </nav>
+
+      {/* Main Section */}
+      <main
+        id="home"
+        className="min-h-screen flex flex-col items-center justify-center px-4 py-8 relative z-10"
+      >
+        <Card className="bg-[#1F1F1F] text-white shadow-2xl border border-neutral-800 rounded-2xl w-full max-w-3xl">
+          <CardHeader>
+            <CardTitle className="text-center text-3xl font-extrabold text-purple-500">
+              Music Upload
+            </CardTitle>
+          </CardHeader>
+
+          <CardContent className="space-y-4">
+            <div
+              onDragOver={(e) => e.preventDefault()}
+              onDrop={(e) => {
+                e.preventDefault();
+                const droppedFile = e.dataTransfer.files?.[0];
+                if (droppedFile) setFile(droppedFile);
+              }}
+              onClick={() => document.getElementById("fileInput")?.click()}
+              className="w-full cursor-pointer border-2 border-dashed border-purple-500 p-6 text-center rounded-lg hover:bg-white/5 transition"
+            >
+              {file ? (
+                <p className="text-green-400 font-semibold">{file.name}</p>
+              ) : (
+                <p className="text-gray-400">
+                  Drop a file here or click to select
+                </p>
+              )}
+            </div>
+
+            <input
+              id="fileInput"
+              type="file"
+              accept="audio/*"
+              onChange={(e) => setFile(e.target.files?.[0] || null)}
+              className="hidden"
             />
-            Deploy now
-          </a>
-          <a
-            className="rounded-full border border-solid border-black/[.08] dark:border-white/[.145] transition-colors flex items-center justify-center hover:bg-[#f2f2f2] dark:hover:bg-[#1a1a1a] hover:border-transparent font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 w-full sm:w-auto md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Read our docs
-          </a>
-        </div>
+          </CardContent>
+
+          <CardFooter className="pt-4 flex flex-col items-center gap-4">
+            <button
+              onClick={handleUpload}
+              disabled={loading}
+              className="relative overflow-hidden rounded-full px-6 py-3 font-bold text-white shadow-lg disabled:opacity-70 bg-purple-600 w-full max-w-xs"
+            >
+              <span className="relative z-10">
+                {loading ? `Processing ${progress}%` : "Upload"}
+              </span>
+
+              {loading && (
+                <span className="absolute inset-0 bg-gradient-to-b from-purple-500 to-purple-700 animate-fluid opacity-30 blur-md" />
+              )}
+            </button>
+
+            {loading && (
+              <div className="w-full max-w-xs mt-2 bg-gray-700 rounded-full h-2.5 overflow-hidden">
+                <div
+                  className="bg-purple-400 h-full transition-all duration-300 ease-in-out"
+                  style={{ width: `${progress}%` }}
+                ></div>
+              </div>
+            )}
+          </CardFooter>
+        </Card>
+
+        {result && (
+          <div className="mt-6 text-center text-white space-y-6 w-full max-w-4xl">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="bg-[#2A2A2A] p-4 rounded-xl shadow-inner">
+                <h3 className="text-lg font-bold text-purple-400 mb-2">
+                  🎤 Vocals
+                </h3>
+                <audio controls className="w-full">
+                  <source src={result.vocals} type="audio/wav" />
+                </audio>
+              </div>
+              <div className="bg-[#2A2A2A] p-4 rounded-xl shadow-inner">
+                <h3 className="text-lg font-bold text-purple-400 mb-2">
+                  🎶 Instrumental
+                </h3>
+                <audio controls className="w-full">
+                  <source src={result.instrumental} type="audio/wav" />
+                </audio>
+              </div>
+            </div>
+          </div>
+        )}
+          <AudioControl />
       </main>
-      <footer className="row-start-3 flex gap-[24px] flex-wrap items-center justify-center">
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/file.svg"
-            alt="File icon"
-            width={16}
-            height={16}
-          />
-          Learn
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/window.svg"
-            alt="Window icon"
-            width={16}
-            height={16}
-          />
-          Examples
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/globe.svg"
-            alt="Globe icon"
-            width={16}
-            height={16}
-          />
-          Go to nextjs.org →
-        </a>
-      </footer>
+
+
+
+      {/* About Section */}
+      <section
+        id="about"
+        className="w-full bg-purple-950 text-white py-20 px-6 text-center relative z-10"
+      >
+        <h2 className="text-3xl font-bold mb-6">About This App</h2>
+        <p className="max-w-3xl mx-auto text-lg text-purple-200 leading-relaxed">
+          This AI-powered Vocal Remover App helps you separate vocals and
+          instrumentals from your favorite songs in real time. Whether you're a
+          karaoke lover, music producer, or remix artist, this tool gives you
+          clean tracks for your next creative project — all with a simple
+          upload. Powered by machine learning, optimized for ease of use, and
+          built for creators like you.
+        </p>
+      </section>
     </div>
   );
 }
