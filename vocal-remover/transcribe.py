@@ -15,7 +15,7 @@ audio_path = sys.argv[1]
 model = whisper.load_model("small")
 
 # Transcribe WITHOUT forcing language
-result = model.transcribe(audio_path)
+result = model.transcribe(audio_path) 
 
 # Print text (likely Romanized Hindi)
 print(result["text"])

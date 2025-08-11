@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import {
   Card,
   CardContent,
@@ -8,6 +8,12 @@ import {
   CardTitle,
   CardFooter,
 } from "@/components/ui/card";
+import {
+  NavigationMenu,
+  NavigationMenuItem,
+  NavigationMenuList,
+  NavigationMenuLink,
+} from "@/components/ui/navigation-menu";
 import AudioControl from "@/components/ui/AudioControl";
 
 export default function Home() {
@@ -24,91 +30,79 @@ export default function Home() {
   const [showLyricsCard, setShowLyricsCard] = useState(false);
   const [lyricsLoading, setLyricsLoading] = useState(false);
 
+  const [showHistoryModal, setShowHistoryModal] = useState(false);
+
+  // Set initial draggable position on client side only
+  const [historyPos, setHistoryPos] = useState({ x: 100, y: 100 });
+  const draggingRef = useRef(false);
+  const dragStartPos = useRef<{ x: number; y: number }>({ x: 0, y: 0 });
+  const modalStartPos = useRef<{ x: number; y: number }>({ x: 0, y: 0 });
+
   const handleGenerateLyrics = async () => {
     if (!result) return;
-
-    setLyricsLoading(true); // start loading
-
+    setLyricsLoading(true);
     const res = await fetch("/api/transcribe", {
       method: "POST",
-      body: JSON.stringify({
-        filePath: `${result.folder}/input.wav`,
-      }),
-      headers: {
-        "Content-Type": "application/json",
-      },
+      body: JSON.stringify({ filePath: `${result.folder}/input.wav` }),
+      headers: { "Content-Type": "application/json" },
     });
-
     const data = await res.json();
-
     const lines = data.lyrics.split(/(?<=[.?!])\s+/);
-
     setLyrics(lines);
     setCurrentLine(0);
     setShowLyricsCard(true);
-    setLyricsLoading(false); // end loading
+    setLyricsLoading(false);
   };
 
   useEffect(() => {
     if (!showLyricsCard || currentLine >= lyrics.length) return;
-
     const interval = setInterval(() => {
       setCurrentLine((prev) => prev + 1);
-    }, 1000); // 1s per line
-
+    }, 1000);
     return () => clearInterval(interval);
   }, [showLyricsCard, currentLine, lyrics.length]);
 
+  // Dummy last login history data
+  const lastLoginHistory = [
+    { date: "2025-08-01 10:30 AM", action: "Logged in Dev Trivedi" },
+    { date: "2025-08-02 04:15 PM", action: "Logged out Dev Trivedi" },
+    { date: "2025-08-03 09:00 AM", action: "Logged in Dev Trivedi" },
+    { date: "2025-08-03 09:00 AM", action: "Logged in Dev Trivedi" },
+    { date: "2025-08-03 09:00 AM", action: "Logged in Dev Trivedi" },
+  ];
+
   const handleUpload = async () => {
     if (!file) return;
-
     setLoading(true);
     setProgress(0);
-
     const formData = new FormData();
     formData.append("file", file);
-
     try {
       const res = await fetch("/api/separate", {
         method: "POST",
         body: formData,
       });
-
       if (!res.ok || !res.body) throw new Error("Failed");
-
       const reader = res.body.getReader();
       const decoder = new TextDecoder();
-
       let buffer = "";
-      let finalJson = null;
-
       while (true) {
         const { done, value } = await reader.read();
         if (done) break;
-
         buffer += decoder.decode(value, { stream: true });
-
         const lines = buffer.split("\n");
         buffer = lines.pop() || "";
-
         for (const line of lines) {
           if (!line.trim()) continue;
-
           if (line.startsWith("PROGRESS:")) {
-            const parts = line.split(":");
-            const progressValue = parseInt(parts[1]);
-            if (!isNaN(progressValue)) {
-              setProgress(progressValue);
-            }
+            const progressValue = parseInt(line.split(":")[1]);
+            if (!isNaN(progressValue)) setProgress(progressValue);
           } else {
             try {
               const json = JSON.parse(line);
-              if (json.type === "progress") {
-                setProgress(json.value);
-              } else if (json.type === "result") {
-                setResult(json);
-              }
-            } catch (e) {
+              if (json.type === "progress") setProgress(json.value);
+              else if (json.type === "result") setResult(json);
+            } catch {
               console.warn("Non-JSON line:", line);
             }
           }
@@ -118,32 +112,113 @@ export default function Home() {
       console.error("Upload failed:", error);
       alert("Upload or processing failed.");
     }
-
     setLoading(false);
   };
 
+  // Drag handlers for history modal
+  const handleDragStart = (e: React.MouseEvent | React.TouchEvent) => {
+    draggingRef.current = true;
+    const clientX = "touches" in e ? e.touches[0].clientX : e.clientX;
+    const clientY = "touches" in e ? e.touches[0].clientY : e.clientY;
+
+    dragStartPos.current = { x: clientX, y: clientY };
+    modalStartPos.current = { ...historyPos };
+  };
+
+  const handleDragMove = (e: MouseEvent | TouchEvent) => {
+    if (!draggingRef.current) return;
+
+    const clientX =
+      "touches" in e && e.touches.length > 0
+        ? e.touches[0].clientX
+        : (e as MouseEvent).clientX;
+    const clientY =
+      "touches" in e && e.touches.length > 0
+        ? e.touches[0].clientY
+        : (e as MouseEvent).clientY;
+
+    const deltaX = clientX - dragStartPos.current.x;
+    const deltaY = clientY - dragStartPos.current.y;
+
+    setHistoryPos({
+      x: modalStartPos.current.x + deltaX,
+      y: modalStartPos.current.y + deltaY,
+    });
+  };
+
+  const handleDragEnd = () => {
+    draggingRef.current = false;
+  };
+
+  useEffect(() => {
+    window.addEventListener("mousemove", handleDragMove);
+    window.addEventListener("mouseup", handleDragEnd);
+    window.addEventListener("touchmove", handleDragMove);
+    window.addEventListener("touchend", handleDragEnd);
+
+    return () => {
+      window.removeEventListener("mousemove", handleDragMove);
+      window.removeEventListener("mouseup", handleDragEnd);
+      window.removeEventListener("touchmove", handleDragMove);
+      window.removeEventListener("touchend", handleDragEnd);
+    };
+  }, []);
+
   return (
     <div className="min-h-screen w-full text-white scroll-smooth bg-gradient-to-br from-black via-purple-900 to-purple-800 relative overflow-hidden">
-      {/* Shine background */}
-      <div className="absolute top-0 left-0 w-full h-full z-0 animate-pulse bg-[radial-gradient(circle_at_top_left,_#ffffff10,_transparent_70%)] pointer-events-none" />
-
       {/* Navbar */}
-      <nav className="w-full px-6 py-6 bg-black/70 text-white flex justify-between items-center shadow-md sticky top-0 z-50 relative overflow-hidden rounded-b-[2rem]">
-        <div className="absolute inset-0 bg-gradient-to-r from-purple-900 via-black to-purple-900 opacity-40 pointer-events-none blur-sm" />
-        <div className="text-2xl font-bold z-10"> 🎶Audio Splitter</div>
-        <ul className="flex space-x-6 text-lg font-medium z-10">
-          <li>
-            <a href="#home" className="hover:text-purple-300 transition">
-              Home
-            </a>
-          </li>
-          <li>
-            <a href="#about" className="hover:text-purple-300 transition">
-              About
-            </a>
-          </li>
-        </ul>
-      </nav>
+      <div className="sticky top-0 z-50 shadow-md rounded-b-[2rem] overflow-hidden">
+        <div className="absolute inset-0 bg-gradient-to-r from-purple-900 via-black to-purple-900 opacity-40 blur-sm pointer-events-none" />
+
+        <NavigationMenu className="bg-black/70 px-4 py-6 flex justify-between items-center relative z-10">
+          {/* Left: Logo */}
+          <div className="text-2xl font-bold">🎶 Audio Splitter</div>
+
+          {/* Right: 5 buttons */}
+          <NavigationMenuList className="flex space-x-6 items-center">
+            <NavigationMenuItem>
+              <NavigationMenuLink
+                href="#home"
+                className="hover:text-purple-300 transition text-lg font-medium"
+              >
+                Home
+              </NavigationMenuLink>
+            </NavigationMenuItem>
+            <NavigationMenuItem>
+              <NavigationMenuLink
+                href="#about"
+                className="hover:text-purple-300 transition text-lg font-medium"
+              >
+                About
+              </NavigationMenuLink>
+            </NavigationMenuItem>
+            <NavigationMenuItem>
+              <button
+                onClick={() => (window.location.href = "/login")}
+                className="hover:text-purple-300 transition text-lg font-medium bg-transparent border-none cursor-pointer"
+              >
+                Login
+              </button>
+            </NavigationMenuItem>
+            <NavigationMenuItem>
+              <button
+                onClick={() => (window.location.href = "/signup")}
+                className="hover:text-purple-300 transition text-lg font-medium bg-transparent border-none cursor-pointer"
+              >
+                Sign Up
+              </button>
+            </NavigationMenuItem>
+            <NavigationMenuItem>
+              <button
+                onClick={() => setShowHistoryModal(true)}
+                className="hover:text-purple-300 transition text-lg font-medium bg-transparent border-none cursor-pointer"
+              >
+                History
+              </button>
+            </NavigationMenuItem>
+          </NavigationMenuList>
+        </NavigationMenu>
+      </div>
 
       {/* Main Section */}
       <main
@@ -156,7 +231,6 @@ export default function Home() {
               Music Upload
             </CardTitle>
           </CardHeader>
-
           <CardContent className="space-y-4">
             <div
               onDragOver={(e) => e.preventDefault()}
@@ -176,7 +250,6 @@ export default function Home() {
                 </p>
               )}
             </div>
-
             <input
               id="fileInput"
               type="file"
@@ -185,7 +258,6 @@ export default function Home() {
               className="hidden"
             />
           </CardContent>
-
           <CardFooter className="pt-4 flex flex-col items-center gap-4">
             <button
               onClick={handleUpload}
@@ -195,18 +267,16 @@ export default function Home() {
               <span className="relative z-10">
                 {loading ? `Processing ${progress}%` : "Upload"}
               </span>
-
               {loading && (
-                <span className="absolute inset-0 bg-gradient-to-b from-purple-500 to-purple-700 animate-fluid opacity-30 blur-md" />
+                <span className="absolute inset-0 bg-gradient-to-b from-purple-500 to-purple-700 animate-pulse opacity-30 blur-md" />
               )}
             </button>
-
             {loading && (
               <div className="w-full max-w-xs mt-2 bg-gray-700 rounded-full h-2.5 overflow-hidden">
                 <div
                   className="bg-purple-400 h-full transition-all duration-300 ease-in-out"
                   style={{ width: `${progress}%` }}
-                ></div>
+                />
               </div>
             )}
           </CardFooter>
@@ -232,18 +302,14 @@ export default function Home() {
                 </audio>
               </div>
             </div>
-
-            {/* 🎤 Show Lyrics Button */}
             <button
               onClick={handleGenerateLyrics}
               disabled={lyricsLoading}
-              className={`mt-4 px-6 py-2 rounded-full text-white font-bold transition-all relative
-    ${
-      lyricsLoading
-        ? " animate-pulse bg-purple-800 cursor-not-allowed"
-        : "bg-purple-600 hover:bg-purple-700"
-    }
-  `}
+              className={`mt-4 px-6 py-2 rounded-full text-white font-bold transition-all ${
+                lyricsLoading
+                  ? "animate-pulse bg-purple-800 cursor-not-allowed"
+                  : "bg-purple-600 hover:bg-purple-700"
+              }`}
             >
               {lyricsLoading ? "Generating..." : "Show Lyrics"}
             </button>
@@ -281,6 +347,36 @@ export default function Home() {
           built for creators like you.
         </p>
       </section>
+
+      {/* Draggable History Modal Popup */}
+      {showHistoryModal && (
+        <div
+          className="fixed z-50 max-w-xs w-[320px] max-h-48 bg-[#2A2A2A] rounded-lg p-4 shadow-lg overflow-y-auto cursor-grab"
+          style={{ left: historyPos.x, top: historyPos.y }}
+          onClick={(e) => e.stopPropagation()} // prevent modal close on inner click
+          onMouseDown={handleDragStart}
+          onTouchStart={handleDragStart}
+          onMouseUp={() => (draggingRef.current = false)}
+          onTouchEnd={() => (draggingRef.current = false)}
+        >
+          <h3 className="text-xl font-bold mb-3 text-purple-400 cursor-move select-none">
+            Last Login History
+          </h3>
+          <ul className="list-disc list-inside text-purple-300 space-y-2">
+            {lastLoginHistory.map((item, idx) => (
+              <li key={idx}>
+                <strong>{item.date}:</strong> {item.action}
+              </li>
+            ))}
+          </ul>
+          <button
+            onClick={() => setShowHistoryModal(false)}
+            className="mt-4 px-4 py-2 bg-purple-600 hover:bg-purple-700 rounded-full text-white font-semibold"
+          >
+            Close
+          </button>
+        </div>
+      )}
     </div>
   );
 }
