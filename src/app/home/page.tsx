@@ -62,20 +62,30 @@ export default function Home() {
   }, [router]);
 
   const handleGenerateLyrics = async () => {
-    if (!result) return;
-    setLyricsLoading(true);
-    const res = await fetch("/api/transcribe", {
-      method: "POST",
-      body: JSON.stringify({ filePath: `${result.folder}/input.wav` }),
-      headers: { "Content-Type": "application/json" },
-    });
-    const data = await res.json();
-    const lines = data.lyrics.split(/(?<=[.?!])\s+/);
-    setLyrics(lines);
-    setCurrentLine(0);
-    setShowLyricsCard(true);
+  if (!result) return;
+  setLyricsLoading(true);
+
+  // ✅ Send UUID folder name to backend
+  const res = await fetch("/api/transcribe", {
+    method: "POST",
+    body: JSON.stringify({ folder: result.folder }), // changed from filePath
+    headers: { "Content-Type": "application/json" },
+  });
+
+  const data = await res.json();
+  if (data.error) {
+    alert(data.error);
     setLyricsLoading(false);
-  };
+    return;
+  }
+
+  const lines = data.lyrics.split(/(?<=[.?!])\s+/);
+  setLyrics(lines);
+  setCurrentLine(0);
+  setShowLyricsCard(true);
+  setLyricsLoading(false);
+};
+
 
   useEffect(() => {
     if (!showLyricsCard || currentLine >= lyrics.length) return;
