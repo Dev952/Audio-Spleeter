@@ -28,9 +28,10 @@ export default function RootLayout({
     <html lang="en">
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
-      >
+      > 
         {children}
-        {/* ✅ Sonner toast above card, center */}
+
+        {/* toast above card, Right */}
         <Toaster richColors position="top-right" theme="dark" />
       </body>
     </html>

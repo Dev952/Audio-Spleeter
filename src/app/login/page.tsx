@@ -4,38 +4,61 @@ import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
-import { toast } from "sonner";
-import { useState } from "react";
+import { toast } from "sonner"; 
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 
 export default function LoginPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [loading, setLoading] = useState(false);
   const router = useRouter();
 
-  const handleLogin = (e: React.FormEvent) => {
+  // Redirect if already logged in
+  useEffect(() => {
+    const token = localStorage.getItem("token");
+    if (token) {
+      // Optionally verify token validity here
+      router.push("/home");
+    }
+  }, [router]);
+
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
+    setLoading(true);
 
-    const storedEmail = localStorage.getItem("userEmail");
-    const storedPassword = localStorage.getItem("userPassword");
+    try {
+      const res = await fetch("/api/auth/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, password }),
+      });
 
-    if (email === storedEmail && password === storedPassword) {
+      const data = await res.json();
+
+      if (!res.ok) {
+        toast.error(data.error || "Login failed");
+        return;
+      }
+
       toast.success("Logged in successfully!");
 
-      // ✅ Mark user as logged in
-      localStorage.setItem("isLoggedIn", "true");
+      // Save token
+      localStorage.setItem("token", data.token);
+      
+      // Optionally save user info (without sensitive data)
+      if (data.user) {
+        localStorage.setItem("user", JSON.stringify(data.user));
+      }
 
-      // ✅ Add login event to history
-      const history = JSON.parse(localStorage.getItem("loginHistory") || "[]");
-      history.push({
-        date: new Date().toLocaleString(),
-        action: "Logged in",
-      });
-      localStorage.setItem("loginHistory", JSON.stringify(history));
-
+      // Redirect to home
       router.push("/home");
-    } else {
-      toast.error("Invalid email or password");
+
+    } catch (error) {
+      toast.error("Connection error. Please try again.");
+      console.error("Login error:", error);
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -78,14 +101,15 @@ export default function LoginPage() {
 
           <Button
             type="submit"
-            className="w-full bg-purple-700 hover:bg-purple-800 text-white font-bold"
+            disabled={loading}
+            className="w-full bg-purple-700 hover:bg-purple-800 text-white font-bold disabled:opacity-50"
           >
-            Log In
+            {loading ? "Logging in..." : "Log In"}
           </Button>
         </form>
 
         <p className="mt-4 text-center text-sm text-gray-300">
-          Don’t have an account?{" "}
+          Don't have an account?{" "}
           <Link href="/signup" className="text-purple-400 hover:underline">
             Sign up
           </Link>

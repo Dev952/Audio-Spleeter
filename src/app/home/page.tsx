@@ -16,18 +16,16 @@ import {
 } from "@/components/ui/navigation-menu";
 import AudioControl from "@/components/ui/AudioControl";
 import { useRouter } from "next/navigation";
+import { toast } from "sonner";
 
 export default function Home() {
   const router = useRouter();
 
-  // ✅ LOGIN CHECK
-  useEffect(() => {
-    const isLoggedIn = localStorage.getItem("isLoggedIn");
-    if (isLoggedIn !== "true") {
-      router.push("/login");
-    }
-  }, [router]);
+  // Authentication state
+  const [user, setUser] = useState<any>(null);
+  const [loginHistory, setLoginHistory] = useState<any[]>([]);
 
+  // App state
   const [file, setFile] = useState<File | null>(null);
   const [result, setResult] = useState<{
     folder: string;
@@ -36,57 +34,109 @@ export default function Home() {
   } | null>(null);
   const [loading, setLoading] = useState(false);
   const [progress, setProgress] = useState<number>(0);
+  
+  // Lyrics state
   const [lyrics, setLyrics] = useState<string[]>([]);
   const [currentLine, setCurrentLine] = useState(0);
   const [showLyricsCard, setShowLyricsCard] = useState(false);
   const [lyricsLoading, setLyricsLoading] = useState(false);
 
+  // History modal state
   const [showHistoryModal, setShowHistoryModal] = useState(false);
   const [historyPos, setHistoryPos] = useState({ x: 100, y: 100 });
   const draggingRef = useRef(false);
   const dragStartPos = useRef<{ x: number; y: number }>({ x: 0, y: 0 });
   const modalStartPos = useRef<{ x: number; y: number }>({ x: 0, y: 0 });
 
-  const [lastLoginHistory, setLastLoginHistory] = useState<any[]>([]);
+  // Authentication check and user data loading
   useEffect(() => {
-    if (typeof window !== "undefined") {
-      const isLoggedIn = localStorage.getItem("isLoggedIn");
-      if (isLoggedIn !== "true") {
-        router.push("/login");
-      }
-
-      // Load login history safely
-      const history = JSON.parse(localStorage.getItem("loginHistory") || "[]");
-      setLastLoginHistory(history);
+    const token = localStorage.getItem("token");
+    if (!token) {
+      router.push("/login");
+      return;
     }
+
+    // Load user data
+    const userData = localStorage.getItem("user");
+    if (userData) {
+      setUser(JSON.parse(userData));
+    }
+
+    // Fetch login history from backend
+    fetchLoginHistory();
   }, [router]);
 
+  const fetchLoginHistory = async () => {
+    try {
+      const token = localStorage.getItem("token");
+      const res = await fetch("/api/auth/history", {
+        headers: {
+          "Authorization": `Bearer ${token}`
+        }
+      });
+      
+      if (res.ok) {
+        const data = await res.json();
+        setLoginHistory(data.history || []);
+      }
+    } catch (error) {
+      console.error("Failed to fetch login history:", error);
+      // Fallback to localStorage if API fails
+      const history = JSON.parse(localStorage.getItem("loginHistory") || "[]");
+      setLoginHistory(history);
+    }
+  };
+
+  const handleLogout = () => {
+    localStorage.removeItem("token");
+    localStorage.removeItem("user");
+    toast.success("Logged out successfully");
+    router.push("/login");
+  };
+
+  // Helper function to get relative time
+  const getTimeAgo = (date: Date) => {
+    const now = new Date();
+    const diffInSeconds = Math.floor((now.getTime() - date.getTime()) / 1000);
+    
+    if (diffInSeconds < 60) return 'Just now';
+    if (diffInSeconds < 3600) return `${Math.floor(diffInSeconds / 60)}m ago`;
+    if (diffInSeconds < 86400) return `${Math.floor(diffInSeconds / 3600)}h ago`;
+    if (diffInSeconds < 604800) return `${Math.floor(diffInSeconds / 86400)}d ago`;
+    return `${Math.floor(diffInSeconds / 604800)}w ago`;
+  };
+
+  // Generate Lyrics
   const handleGenerateLyrics = async () => {
-  if (!result) return;
-  setLyricsLoading(true);
+    if (!result) return;
+    setLyricsLoading(true);
 
-  // ✅ Send UUID folder name to backend
-  const res = await fetch("/api/transcribe", {
-    method: "POST",
-    body: JSON.stringify({ folder: result.folder }), // changed from filePath
-    headers: { "Content-Type": "application/json" },
-  });
+    try {
+      const res = await fetch("/api/transcribe", {
+        method: "POST",
+        body: JSON.stringify({ folder: result.folder }),
+        headers: { "Content-Type": "application/json" },
+      });
 
-  const data = await res.json();
-  if (data.error) {
-    alert(data.error);
-    setLyricsLoading(false);
-    return;
-  }
+      const data = await res.json();
+      if (data.error) {
+        toast.error(data.error);
+        setLyricsLoading(false);
+        return;
+      }
 
-  const lines = data.lyrics.split(/(?<=[.?!])\s+/);
-  setLyrics(lines);
-  setCurrentLine(0);
-  setShowLyricsCard(true);
-  setLyricsLoading(false);
-};
+      const lines = data.lyrics.split(/(?<=[.?!])\s+/);
+      setLyrics(lines);
+      setCurrentLine(0);
+      setShowLyricsCard(true);
+    } catch (error) {
+      toast.error("Failed to generate lyrics");
+    } finally {
+      setLyricsLoading(false);
+    }
+  };
 
-
+  // Auto-Show Lyrics
   useEffect(() => {
     if (!showLyricsCard || currentLine >= lyrics.length) return;
     const interval = setInterval(() => {
@@ -95,6 +145,7 @@ export default function Home() {
     return () => clearInterval(interval);
   }, [showLyricsCard, currentLine, lyrics.length]);
 
+  // Upload + Process File
   const handleUpload = async () => {
     if (!file) return;
     setLoading(true);
@@ -107,16 +158,21 @@ export default function Home() {
         method: "POST",
         body: formData,
       });
+      
       if (!res.ok || !res.body) throw new Error("Failed");
+      
       const reader = res.body.getReader();
       const decoder = new TextDecoder();
       let buffer = "";
+      
       while (true) {
         const { done, value } = await reader.read();
         if (done) break;
+        
         buffer += decoder.decode(value, { stream: true });
         const lines = buffer.split("\n");
         buffer = lines.pop() || "";
+        
         for (const line of lines) {
           if (!line.trim()) continue;
           if (line.startsWith("PROGRESS:")) {
@@ -135,12 +191,13 @@ export default function Home() {
       }
     } catch (error) {
       console.error("Upload failed:", error);
-      alert("Upload or processing failed.");
+      toast.error("Upload or processing failed.");
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
   };
 
-  // Drag handlers
+  // Drag handlers for history modal
   const handleDragStart = (e: React.MouseEvent | React.TouchEvent) => {
     draggingRef.current = true;
     const clientX = "touches" in e ? e.touches[0].clientX : e.clientX;
@@ -151,14 +208,12 @@ export default function Home() {
 
   const handleDragMove = (e: MouseEvent | TouchEvent) => {
     if (!draggingRef.current) return;
-    const clientX =
-      "touches" in e && e.touches.length > 0
-        ? e.touches[0].clientX
-        : (e as MouseEvent).clientX;
-    const clientY =
-      "touches" in e && e.touches.length > 0
-        ? e.touches[0].clientY
-        : (e as MouseEvent).clientY;
+    const clientX = "touches" in e && e.touches.length > 0
+      ? e.touches[0].clientX
+      : (e as MouseEvent).clientX;
+    const clientY = "touches" in e && e.touches.length > 0
+      ? e.touches[0].clientY
+      : (e as MouseEvent).clientY;
     const deltaX = clientX - dragStartPos.current.x;
     const deltaY = clientY - dragStartPos.current.y;
     setHistoryPos({
@@ -183,15 +238,14 @@ export default function Home() {
       window.removeEventListener("touchend", handleDragEnd);
     };
   }, []);
+
   return (
     <div className="min-h-screen w-full text-white scroll-smooth bg-gradient-to-br from-black via-purple-900 to-purple-800 relative overflow-hidden">
       {/* Navbar */}
       <div className="sticky top-0 z-50 shadow-md rounded-b-[2rem] overflow-hidden">
         <div className="absolute inset-0 bg-gradient-to-r from-purple-900 via-black to-purple-900 opacity-40 blur-sm pointer-events-none" />
         <NavigationMenu className="bg-black/70 px-4 py-6 flex justify-between items-center relative z-10">
-          {/* Left: Logo */}
           <div className="text-2xl font-bold">🎶 Audio Splitter</div>
-          {/* Right: Only History Button */}
           <NavigationMenuList className="flex space-x-6 items-center">
             <NavigationMenuItem>
               <NavigationMenuLink
@@ -215,6 +269,21 @@ export default function Home() {
                 className="hover:text-purple-300 transition text-lg font-medium bg-transparent border-none cursor-pointer"
               >
                 History
+              </button>
+            </NavigationMenuItem>
+            {user && (
+              <NavigationMenuItem>
+                <span className="text-sm text-purple-300">
+                  Welcome, {user.name}
+                </span>
+              </NavigationMenuItem>
+            )}
+            <NavigationMenuItem>
+              <button
+                onClick={handleLogout}
+                className="hover:text-red-300 transition text-lg font-medium bg-transparent border-none cursor-pointer"
+              >
+                Logout
               </button>
             </NavigationMenuItem>
           </NavigationMenuList>
@@ -262,7 +331,7 @@ export default function Home() {
           <CardFooter className="pt-4 flex flex-col items-center gap-4">
             <button
               onClick={handleUpload}
-              disabled={loading}
+              disabled={loading || !file}
               className="relative overflow-hidden rounded-full px-6 py-3 font-bold text-white shadow-lg disabled:opacity-70 bg-purple-600 w-full max-w-xs"
             >
               <span className="relative z-10">
@@ -271,7 +340,7 @@ export default function Home() {
               {loading && (
                 <span className="absolute inset-0 bg-gradient-to-b from-purple-500 to-purple-700 animate-pulse opacity-30 blur-md" />
               )}
-            </button>
+            </button> 
             {loading && (
               <div className="w-full max-w-xs mt-2 bg-gray-700 rounded-full h-2.5 overflow-hidden">
                 <div
@@ -352,31 +421,60 @@ export default function Home() {
       {/* Draggable History Modal */}
       {showHistoryModal && (
         <div
-          className="fixed z-50 max-w-xs w-[320px] max-h-48 bg-[#2A2A2A] rounded-lg p-4 shadow-lg overflow-y-auto cursor-grab"
+          className="fixed z-50 w-[400px] max-h-96 bg-[#2A2A2A] rounded-lg p-4 shadow-lg overflow-y-auto cursor-grab border border-purple-500"
           style={{ left: historyPos.x, top: historyPos.y }}
           onMouseDown={handleDragStart}
           onTouchStart={handleDragStart}
         >
-          <h3 className="text-xl font-bold mb-3 text-purple-400 cursor-move select-none">
-            Last Login History
-          </h3>
-          {lastLoginHistory.length > 0 ? (
-            <ul className="list-disc list-inside text-purple-300 space-y-2">
-              {lastLoginHistory.map((item: any, idx: number) => (
-                <li key={idx}>
-                  <strong>{item.date}:</strong> {item.action}
-                </li>
+          <div className="flex justify-between items-center mb-3 cursor-move select-none">
+            <h3 className="text-xl font-bold text-purple-400">
+              Login History
+            </h3>
+            <button
+              onClick={() => setShowHistoryModal(false)}
+              className="text-gray-400 hover:text-white text-xl"
+            >
+              ×
+            </button>
+          </div>
+          
+          {loginHistory.length > 0 ? (
+            <div className="space-y-3">
+              {loginHistory.slice(0, 8).map((item: any, idx: number) => (
+                <div 
+                  key={idx} 
+                  className="bg-[#1F1F1F] p-3 rounded-lg border border-purple-800/30"
+                >
+                  <div className="flex justify-between items-start">
+                    <div>
+                      <span className="text-purple-300 font-medium">
+                        {item.action}
+                      </span>
+                    </div>
+                    <div className="text-right">
+                      <div className="text-xs text-gray-400">
+                        {item.formattedDate || new Date(item.date).toLocaleString('en-US', {
+                          year: 'numeric',
+                          month: 'short',
+                          day: 'numeric',
+                          hour: '2-digit',
+                          minute: '2-digit',
+                          hour12: true
+                        })}
+                      </div>
+                      <div className="text-xs text-gray-500 mt-1">
+                        {getTimeAgo(new Date(item.date || item.timestamp))}
+                      </div>
+                    </div>
+                  </div>
+                </div>
               ))}
-            </ul>
+            </div>
           ) : (
-            <p className="text-purple-300">No login history available.</p>
+            <p className="text-purple-300 text-center py-4">
+              No login history available.
+            </p>
           )}
-          <button
-            onClick={() => setShowHistoryModal(false)}
-            className="mt-4 px-4 py-2 bg-purple-600 hover:bg-purple-700 rounded-full text-white font-semibold"
-          >
-            Close
-          </button>
         </div>
       )}
     </div>
