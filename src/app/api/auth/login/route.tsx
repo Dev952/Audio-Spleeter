@@ -9,12 +9,12 @@ export async function POST(req: Request) {
   try {
     const { email, password } = await req.json();
 
-    // always lowercase before checking
+    // Always lowercase before checking
     const emailLower = email.toLowerCase();
 
     await dbConnect(); 
 
-    const user = await User.findOne({ email :  emailLower  });
+    const user = await User.findOne({ email: emailLower });
     if (!user) {
       return NextResponse.json({ error: "User not found" }, { status: 404 });
     }
@@ -25,9 +25,13 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Invalid password" }, { status: 401 });
     }
 
-    await LoginHistory.create({ userId: user._id, action: "Logged in" });
+    // Use the correct enum value - try one of these common options:
+    await LoginHistory.create({ 
+      userId: user._id, 
+      action: "login" // Changed from "Logged in" to "login"
+    });
 
-    //  Ensure JWT secret exists
+    // Ensure JWT secret exists
     if (!process.env.JWT_SECRET) {
       throw new Error("JWT_SECRET is not set in .env.local");
     }
@@ -38,8 +42,20 @@ export async function POST(req: Request) {
       { expiresIn: "1d" }
     );
 
-    return NextResponse.json({ message: "Login successful", token });
+    // Return user info (without sensitive data) for frontend use
+    const userResponse = {
+      id: user._id,
+      email: user.email,
+      name: user.name, // Adjust based on your User model fields
+    };
+
+    return NextResponse.json({ 
+      message: "Login successful", 
+      token,
+      user: userResponse 
+    });
   } catch (err: any) {
+    console.error("Login error:", err);
     return NextResponse.json({ error: err.message }, { status: 500 });
   }
 }

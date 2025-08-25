@@ -34,7 +34,7 @@ export default function Home() {
   } | null>(null);
   const [loading, setLoading] = useState(false);
   const [progress, setProgress] = useState<number>(0);
-  
+
   // Lyrics state
   const [lyrics, setLyrics] = useState<string[]>([]);
   const [currentLine, setCurrentLine] = useState(0);
@@ -47,6 +47,18 @@ export default function Home() {
   const draggingRef = useRef(false);
   const dragStartPos = useRef<{ x: number; y: number }>({ x: 0, y: 0 });
   const modalStartPos = useRef<{ x: number; y: number }>({ x: 0, y: 0 });
+
+  // Add this state at the top with your other useState declarations
+  const [showWelcome, setShowWelcome] = useState(true);
+
+  // Add this useEffect to hide welcome message after 1 minute
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setShowWelcome(false);
+    }, 5000);
+
+    return () => clearTimeout(timer);
+  }, []);
 
   // Authentication check and user data loading
   useEffect(() => {
@@ -71,10 +83,10 @@ export default function Home() {
       const token = localStorage.getItem("token");
       const res = await fetch("/api/auth/history", {
         headers: {
-          "Authorization": `Bearer ${token}`
-        }
+          Authorization: `Bearer ${token}`,
+        },
       });
-      
+
       if (res.ok) {
         const data = await res.json();
         setLoginHistory(data.history || []);
@@ -98,11 +110,13 @@ export default function Home() {
   const getTimeAgo = (date: Date) => {
     const now = new Date();
     const diffInSeconds = Math.floor((now.getTime() - date.getTime()) / 1000);
-    
-    if (diffInSeconds < 60) return 'Just now';
+
+    if (diffInSeconds < 60) return "Just now";
     if (diffInSeconds < 3600) return `${Math.floor(diffInSeconds / 60)}m ago`;
-    if (diffInSeconds < 86400) return `${Math.floor(diffInSeconds / 3600)}h ago`;
-    if (diffInSeconds < 604800) return `${Math.floor(diffInSeconds / 86400)}d ago`;
+    if (diffInSeconds < 86400)
+      return `${Math.floor(diffInSeconds / 3600)}h ago`;
+    if (diffInSeconds < 604800)
+      return `${Math.floor(diffInSeconds / 86400)}d ago`;
     return `${Math.floor(diffInSeconds / 604800)}w ago`;
   };
 
@@ -158,21 +172,21 @@ export default function Home() {
         method: "POST",
         body: formData,
       });
-      
+
       if (!res.ok || !res.body) throw new Error("Failed");
-      
+
       const reader = res.body.getReader();
       const decoder = new TextDecoder();
       let buffer = "";
-      
+
       while (true) {
         const { done, value } = await reader.read();
         if (done) break;
-        
+
         buffer += decoder.decode(value, { stream: true });
         const lines = buffer.split("\n");
         buffer = lines.pop() || "";
-        
+
         for (const line of lines) {
           if (!line.trim()) continue;
           if (line.startsWith("PROGRESS:")) {
@@ -208,12 +222,14 @@ export default function Home() {
 
   const handleDragMove = (e: MouseEvent | TouchEvent) => {
     if (!draggingRef.current) return;
-    const clientX = "touches" in e && e.touches.length > 0
-      ? e.touches[0].clientX
-      : (e as MouseEvent).clientX;
-    const clientY = "touches" in e && e.touches.length > 0
-      ? e.touches[0].clientY
-      : (e as MouseEvent).clientY;
+    const clientX =
+      "touches" in e && e.touches.length > 0
+        ? e.touches[0].clientX
+        : (e as MouseEvent).clientX;
+    const clientY =
+      "touches" in e && e.touches.length > 0
+        ? e.touches[0].clientY
+        : (e as MouseEvent).clientY;
     const deltaX = clientX - dragStartPos.current.x;
     const deltaY = clientY - dragStartPos.current.y;
     setHistoryPos({
@@ -246,6 +262,15 @@ export default function Home() {
         <div className="absolute inset-0 bg-gradient-to-r from-purple-900 via-black to-purple-900 opacity-40 blur-sm pointer-events-none" />
         <NavigationMenu className="bg-black/70 px-4 py-6 flex justify-between items-center relative z-10">
           <div className="text-2xl font-bold">🎶 Audio Splitter</div>
+
+          {user && showWelcome && (
+            <div className="absolute left-1/2 transform -translate-x-1/2 text-center">
+              <span className="text-lg font-medium text-purple-300">
+                Welcome {user.name} ! 👋
+              </span>
+            </div>
+          )}
+
           <NavigationMenuList className="flex space-x-6 items-center">
             <NavigationMenuItem>
               <NavigationMenuLink
@@ -271,13 +296,7 @@ export default function Home() {
                 History
               </button>
             </NavigationMenuItem>
-            {user && (
-              <NavigationMenuItem>
-                <span className="text-sm text-purple-300">
-                  Welcome, {user.name}
-                </span>
-              </NavigationMenuItem>
-            )}
+
             <NavigationMenuItem>
               <button
                 onClick={handleLogout}
@@ -340,7 +359,7 @@ export default function Home() {
               {loading && (
                 <span className="absolute inset-0 bg-gradient-to-b from-purple-500 to-purple-700 animate-pulse opacity-30 blur-md" />
               )}
-            </button> 
+            </button>
             {loading && (
               <div className="w-full max-w-xs mt-2 bg-gray-700 rounded-full h-2.5 overflow-hidden">
                 <div
@@ -427,9 +446,7 @@ export default function Home() {
           onTouchStart={handleDragStart}
         >
           <div className="flex justify-between items-center mb-3 cursor-move select-none">
-            <h3 className="text-xl font-bold text-purple-400">
-              Login History
-            </h3>
+            <h3 className="text-xl font-bold text-purple-400">Login History</h3>
             <button
               onClick={() => setShowHistoryModal(false)}
               className="text-gray-400 hover:text-white text-xl"
@@ -437,12 +454,12 @@ export default function Home() {
               ×
             </button>
           </div>
-          
+
           {loginHistory.length > 0 ? (
             <div className="space-y-3">
               {loginHistory.slice(0, 8).map((item: any, idx: number) => (
-                <div 
-                  key={idx} 
+                <div
+                  key={idx}
                   className="bg-[#1F1F1F] p-3 rounded-lg border border-purple-800/30"
                 >
                   <div className="flex justify-between items-start">
@@ -453,14 +470,15 @@ export default function Home() {
                     </div>
                     <div className="text-right">
                       <div className="text-xs text-gray-400">
-                        {item.formattedDate || new Date(item.date).toLocaleString('en-US', {
-                          year: 'numeric',
-                          month: 'short',
-                          day: 'numeric',
-                          hour: '2-digit',
-                          minute: '2-digit',
-                          hour12: true
-                        })}
+                        {item.formattedDate ||
+                          new Date(item.date).toLocaleString("en-US", {
+                            year: "numeric",
+                            month: "short",
+                            day: "numeric",
+                            hour: "2-digit",
+                            minute: "2-digit",
+                            hour12: true,
+                          })}
                       </div>
                       <div className="text-xs text-gray-500 mt-1">
                         {getTimeAgo(new Date(item.date || item.timestamp))}
