@@ -17,6 +17,7 @@ import {
 import AudioControl from "@/components/ui/AudioControl";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
+import { getCurrentUser, getLoginHistory, logoutUser } from "@/app/actions/auth";
 
 export default function Home() {
   const router = useRouter();
@@ -24,6 +25,7 @@ export default function Home() {
   // Authentication state
   const [user, setUser] = useState<any>(null);
   const [loginHistory, setLoginHistory] = useState<any[]>([]);
+  const [isAuthenticating, setIsAuthenticating] = useState(true);
 
   // App state
   const [file, setFile] = useState<File | null>(null);
@@ -51,7 +53,7 @@ export default function Home() {
   // Add this state at the top with your other useState declarations
   const [showWelcome, setShowWelcome] = useState(true);
 
-  // Add this useEffect to hide welcome message after 1 minute
+  // Add this useEffect to hide welcome message after 5 seconds
   useEffect(() => {
     const timer = setTimeout(() => {
       setShowWelcome(false);
@@ -60,50 +62,57 @@ export default function Home() {
     return () => clearTimeout(timer);
   }, []);
 
-  // Authentication check and user data loading
+  // Authentication check using server actions
   useEffect(() => {
-    const token = localStorage.getItem("token");
-    if (!token) {
-      router.push("/login");
-      return;
-    }
+    const checkAuth = async () => {
+      setIsAuthenticating(true);
+      try {
+        const result = await getCurrentUser();
+        if (result.success && result.user) {
+          setUser(result.user);
+          // Fetch login history after successful auth
+          await fetchLoginHistory();
+        } else {
+          // No valid auth, redirect to login
+          router.push("/login");
+          return;
+        }
+      } catch (error) {
+        console.error("Auth check failed:", error);
+        router.push("/login");
+        return;
+      } finally {
+        setIsAuthenticating(false);
+      }
+    };
 
-    // Load user data
-    const userData = localStorage.getItem("user");
-    if (userData) {
-      setUser(JSON.parse(userData));
-    }
-
-    // Fetch login history from backend
-    fetchLoginHistory();
+    checkAuth();
   }, [router]);
 
   const fetchLoginHistory = async () => {
     try {
-      const token = localStorage.getItem("token");
-      const res = await fetch("/api/auth/history", {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      });
-
-      if (res.ok) {
-        const data = await res.json();
-        setLoginHistory(data.history || []);
+      const result = await getLoginHistory();
+      if (result.success && result.history) {
+        setLoginHistory(result.history);
+      } else {
+        console.error("Failed to fetch login history:", result.error);
+        setLoginHistory([]);
       }
     } catch (error) {
       console.error("Failed to fetch login history:", error);
-      // Fallback to localStorage if API fails
-      const history = JSON.parse(localStorage.getItem("loginHistory") || "[]");
-      setLoginHistory(history);
+      setLoginHistory([]);
     }
   };
 
-  const handleLogout = () => {
-    localStorage.removeItem("token");
-    localStorage.removeItem("user");
-    toast.success("Logged out successfully");
-    router.push("/login");
+  const handleLogout = async () => {
+    try {
+      await logoutUser(); // This will automatically redirect to login
+      toast.success("Logged out successfully");
+    } catch (error) {
+      console.error("Logout failed:", error);
+      // Fallback: redirect manually if server action fails
+      router.push("/login");
+    }
   };
 
   // Helper function to get relative time
@@ -120,7 +129,7 @@ export default function Home() {
     return `${Math.floor(diffInSeconds / 604800)}w ago`;
   };
 
-  // Generate Lyrics
+  // Generate Lyrics (keeping as is since it's not auth-related)
   const handleGenerateLyrics = async () => {
     if (!result) return;
     setLyricsLoading(true);
@@ -159,7 +168,7 @@ export default function Home() {
     return () => clearInterval(interval);
   }, [showLyricsCard, currentLine, lyrics.length]);
 
-  // Upload + Process File
+  // Upload + Process File (keeping as is since it's not auth-related)
   const handleUpload = async () => {
     if (!file) return;
     setLoading(true);
@@ -254,6 +263,18 @@ export default function Home() {
       window.removeEventListener("touchend", handleDragEnd);
     };
   }, []);
+
+  // Show loading while authenticating
+  if (isAuthenticating) {
+    return (
+      <div className="min-h-screen w-full text-white flex items-center justify-center bg-gradient-to-br from-black via-purple-900 to-purple-800">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-purple-500 mx-auto mb-4"></div>
+          <p className="text-lg text-purple-300">Authenticating...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen w-full text-white scroll-smooth bg-gradient-to-br from-black via-purple-900 to-purple-800 relative overflow-hidden">
