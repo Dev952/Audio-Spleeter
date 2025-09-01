@@ -1,31 +1,40 @@
-import mongoose, { Schema, Document } from "mongoose";
+import mongoose from "mongoose";
 
-export interface ILoginHistory extends Document {
-  userId: mongoose.Types.ObjectId;
-  action: string;
-  date: Date;
-  ipAddress?: string;
-  userAgent?: string;
-  createdAt: Date;
-  updatedAt: Date;
-}
-
-const LoginHistorySchema = new Schema<ILoginHistory>({
-  userId: { type: Schema.Types.ObjectId, ref: "User", required: true },
-  action: { 
-    type: String, 
+const LoginHistorySchema = new mongoose.Schema({
+  userId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: "User",
     required: true,
-    enum: ['register', 'login', 'logout', 'failed_login', 'password_change']
   },
-  date: { type: Date, default: Date.now },
-  ipAddress: { type: String },
-  userAgent: { type: String },
-}, {
-  timestamps: true // This adds createdAt and updatedAt automatically
+  action: {
+    type: String,
+    required: true,
+    enum: [
+      "login", 
+      "register", 
+      "logout", 
+      "password_reset",          
+      "forgot_password_request", 
+      "password_reset_attempt"  
+    ],
+  },
+  date: {
+    type: Date,
+    default: Date.now,
+  },
+  ipAddress: {
+    type: String,
+    required: false, // Optional field for tracking IP
+  },
+  userAgent: {
+    type: String,
+    required: false, // Optional field for tracking browser/device
+  },
 });
 
-// Add index for better query performance
+// Index for faster queries
 LoginHistorySchema.index({ userId: 1, date: -1 });
+  
+const LoginHistory = mongoose.models.LoginHistory || mongoose.model("LoginHistory", LoginHistorySchema);
 
-export default mongoose.models.LoginHistory ||
-  mongoose.model<ILoginHistory>("LoginHistory", LoginHistorySchema);
+export default LoginHistory;

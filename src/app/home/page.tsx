@@ -15,7 +15,7 @@ import {
   NavigationMenuLink,
 } from "@/components/ui/navigation-menu";
 import AudioControl from "@/components/ui/AudioControl";
-import { useRouter } from "next/navigation";
+import { useRouter } from "next/navigation";  
 import { toast } from "sonner";
 import { getCurrentUser, getLoginHistory, logoutUser } from "@/app/actions/auth";
 
@@ -50,7 +50,7 @@ export default function Home() {
   const dragStartPos = useRef<{ x: number; y: number }>({ x: 0, y: 0 });
   const modalStartPos = useRef<{ x: number; y: number }>({ x: 0, y: 0 });
 
-  // Add this state at the top with your other useState declarations
+  // Welcome banner state 
   const [showWelcome, setShowWelcome] = useState(true);
 
   // Add this useEffect to hide welcome message after 5 seconds
@@ -86,7 +86,7 @@ export default function Home() {
       }
     };
 
-    checkAuth();
+    checkAuth();  
   }, [router]);
 
   const fetchLoginHistory = async () => {
@@ -129,7 +129,7 @@ export default function Home() {
     return `${Math.floor(diffInSeconds / 604800)}w ago`;
   };
 
-  // Generate Lyrics (keeping as is since it's not auth-related)
+  // Generate Lyrics 
   const handleGenerateLyrics = async () => {
     if (!result) return;
     setLyricsLoading(true);
@@ -168,7 +168,7 @@ export default function Home() {
     return () => clearInterval(interval);
   }, [showLyricsCard, currentLine, lyrics.length]);
 
-  // Upload + Process File (keeping as is since it's not auth-related)
+  // Upload + Process File 
   const handleUpload = async () => {
     if (!file) return;
     setLoading(true);
