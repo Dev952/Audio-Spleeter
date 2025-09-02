@@ -5,19 +5,26 @@ import fs from "fs";
 
 export async function POST(req: Request) {
   try {
-    const { folder } = await req.json(); // <-- UUID folder name from frontend
+    const { folder, originalName } = await req.json(); // Get both folder and originalName from frontend
     if (!folder) {
       return NextResponse.json({ error: "folder is required" }, { status: 400 });
     }
 
-    // Build the absolute path to input_vocal.wav inside the given UUID folder
-    const absPath = path.resolve("public", folder, "input_Vocals.wav");
+    // If originalName is provided, use it to construct the vocals filename
+    let vocalsFileName = "vocals.wav"; // generic fallback
+    if (originalName) {
+      const nameWithoutExt = path.parse(originalName).name;
+      vocalsFileName = `${nameWithoutExt}_Vocals.wav`;
+    }
+
+    // Build the absolute path to the vocals file inside the given UUID folder
+    const absPath = path.resolve("public", folder, vocalsFileName);
 
     // Check if file exists
     if (!fs.existsSync(absPath)) {
       return NextResponse.json(
-        { error: "input_Vocals.wav not found in given folder" },
-        { status: 404 } 
+        { error: `${vocalsFileName} not found in given folder` },
+        { status: 404 }
       );
     }
 

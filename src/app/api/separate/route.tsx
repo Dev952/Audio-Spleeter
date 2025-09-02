@@ -19,12 +19,18 @@ export async function POST(req: NextRequest) {
     const uuid = uuidv4();
     const buffer = Buffer.from(await file.arrayBuffer());
 
+    // Extract original filename without extension
+    const originalName = file.name;
+    const nameWithoutExt = path.parse(originalName).name;
+    const fileExtension = path.parse(originalName).ext || '.wav';
+
     // Create upload directory
     const baseDir = path.join(process.cwd(), "public", "uploads", uuid);
     await mkdir(baseDir, { recursive: true });
 
-    // Save uploaded file as input.wav
-    const inputPath = path.join(baseDir, "input.wav");
+    // Save uploaded file with original name (but ensure .wav extension for processing)
+    const inputFileName = `${nameWithoutExt}.wav`;
+    const inputPath = path.join(baseDir, inputFileName);
     await writeFile(inputPath, buffer);
 
     // Prepare Python command
@@ -65,13 +71,14 @@ export async function POST(req: NextRequest) {
             // Send final 100% just in case
             controller.enqueue(`PROGRESS:100\n`);
 
-            // Send result paths to frontend as JSON
+            // Send result paths to frontend as JSON with original filename
             controller.enqueue(
               JSON.stringify({
                 type: "result",
                 folder: `uploads/${uuid}`,
-                vocals: `/uploads/${uuid}/input_Vocals.wav`,
-                instrumental: `/uploads/${uuid}/input_Instruments.wav`,
+                originalName: originalName,
+                vocals: `/uploads/${uuid}/${nameWithoutExt}_Vocals.wav`,
+                instrumental: `/uploads/${uuid}/${nameWithoutExt}_Instruments.wav`,
               }) + "\n"
             );
           } else {

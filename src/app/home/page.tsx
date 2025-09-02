@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useEffect, useRef } from "react";
+import path from "path";
 import {
   Card,
   CardContent,
@@ -15,9 +16,13 @@ import {
   NavigationMenuLink,
 } from "@/components/ui/navigation-menu";
 import AudioControl from "@/components/ui/AudioControl";
-import { useRouter } from "next/navigation";  
+import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { getCurrentUser, getLoginHistory, logoutUser } from "@/app/actions/auth";
+import {
+  getCurrentUser,
+  getLoginHistory,
+  logoutUser,
+} from "@/app/actions/auth";
 
 export default function Home() {
   const router = useRouter();
@@ -31,6 +36,7 @@ export default function Home() {
   const [file, setFile] = useState<File | null>(null);
   const [result, setResult] = useState<{
     folder: string;
+    originalName: string;
     vocals: string;
     instrumental: string;
   } | null>(null);
@@ -50,7 +56,7 @@ export default function Home() {
   const dragStartPos = useRef<{ x: number; y: number }>({ x: 0, y: 0 });
   const modalStartPos = useRef<{ x: number; y: number }>({ x: 0, y: 0 });
 
-  // Welcome banner state 
+  // Welcome banner state
   const [showWelcome, setShowWelcome] = useState(true);
 
   // Add this useEffect to hide welcome message after 5 seconds
@@ -86,7 +92,7 @@ export default function Home() {
       }
     };
 
-    checkAuth();  
+    checkAuth();
   }, [router]);
 
   const fetchLoginHistory = async () => {
@@ -129,7 +135,7 @@ export default function Home() {
     return `${Math.floor(diffInSeconds / 604800)}w ago`;
   };
 
-  // Generate Lyrics 
+  // Generate Lyrics
   const handleGenerateLyrics = async () => {
     if (!result) return;
     setLyricsLoading(true);
@@ -137,7 +143,10 @@ export default function Home() {
     try {
       const res = await fetch("/api/transcribe", {
         method: "POST",
-        body: JSON.stringify({ folder: result.folder }),
+        body: JSON.stringify({
+          folder: result.folder,
+          originalName: result.originalName,
+        }),
         headers: { "Content-Type": "application/json" },
       });
 
@@ -168,7 +177,7 @@ export default function Home() {
     return () => clearInterval(interval);
   }, [showLyricsCard, currentLine, lyrics.length]);
 
-  // Upload + Process File 
+  // Upload + Process File
   const handleUpload = async () => {
     if (!file) return;
     setLoading(true);
@@ -394,11 +403,22 @@ export default function Home() {
 
         {result && (
           <div className="mt-6 text-center text-white space-y-6 w-full max-w-4xl">
+            {/* Show original filename */}
+            <div className="text-lg font-medium text-purple-300 mb-4">
+              Processed:{" "}
+              <span className="text-white font-bold">
+                {result.originalName}
+              </span>
+            </div>
+
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div className="bg-[#2A2A2A] p-4 rounded-xl shadow-inner">
                 <h3 className="text-lg font-bold text-purple-400 mb-2">
                   🎤 Vocals
                 </h3>
+                <p className="text-sm text-gray-400 mb-2">
+                  {path.parse(result.originalName).name}_Vocals.wav
+                </p>
                 <audio controls className="w-full">
                   <source src={result.vocals} type="audio/wav" />
                 </audio>
@@ -407,6 +427,9 @@ export default function Home() {
                 <h3 className="text-lg font-bold text-purple-400 mb-2">
                   🎶 Instrumental
                 </h3>
+                <p className="text-sm text-gray-400 mb-2">
+                  {path.parse(result.originalName).name}_Instruments.wav
+                </p>
                 <audio controls className="w-full">
                   <source src={result.instrumental} type="audio/wav" />
                 </audio>
