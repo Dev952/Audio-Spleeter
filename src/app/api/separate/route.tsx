@@ -3,10 +3,33 @@ import { v4 as uuidv4 } from "uuid";
 import { spawn } from "child_process";
 import path from "path";
 import { writeFile, mkdir } from "fs/promises";
+import jwt from "jsonwebtoken";
+import { cookies } from "next/headers";
+import dbConnect from "@/lib/mongodb";
+import UploadHistory from "@/models/UploadHistory";
 
-// POST request handler
+
 export async function POST(req: NextRequest) {
+  let uploadRecord: any = null;
+  
   try {
+    // Authentication check
+    const cookieStore = await cookies();
+    const token = cookieStore.get('auth-token')?.value;
+    
+    if (!token) {
+      return new Response("Authentication required", { status: 401 });
+    }
+
+    let decoded: any;
+    try {
+      decoded = jwt.verify(token, process.env.JWT_SECRET!);
+    } catch (error) {
+      return new Response("Invalid token", { status: 401 });
+    }
+
+    const userId = decoded.userId;
+
     // Get uploaded file from form-data
     const formData = await req.formData();
     const file = formData.get("file") as File;
@@ -33,6 +56,21 @@ export async function POST(req: NextRequest) {
     const inputPath = path.join(baseDir, inputFileName);
     await writeFile(inputPath, buffer);
 
+    // Connect to database and create upload history record
+    await dbConnect();
+    
+    uploadRecord = await UploadHistory.create({
+      userId: userId,
+      originalFileName: originalName,
+      originalFileSize: file.size,
+      folderPath: `uploads/${uuid}`,
+      vocalsFilePath: `/uploads/${uuid}/${nameWithoutExt}_Vocals.wav`,
+      instrumentalFilePath: `/uploads/${uuid}/${nameWithoutExt}_Instruments.wav`,
+      processingStatus: "processing",
+      processingStartTime: new Date(),
+      fileFormat: fileExtension,
+    });
+
     // Prepare Python command
     const pythonArgs = [
       "vocal-remover/inference.py", // Your script path
@@ -49,6 +87,8 @@ export async function POST(req: NextRequest) {
     // Create stream to send live updates to frontend
     const stream = new ReadableStream({
       start(controller) {
+        const processingStartTime = Date.now();
+
         // Listen for stdout from Python
         python.stdout.on("data", (data) => {
           const text = data.toString();
@@ -66,24 +106,62 @@ export async function POST(req: NextRequest) {
         });
 
         // When Python process finishes
-        python.on("close", (code) => {
-          if (code === 0) {
-            // Send final 100% just in case
-            controller.enqueue(`PROGRESS:100\n`);
+        python.on("close", async (code) => {
+          const processingEndTime = Date.now();
+          const processingDuration = Math.round((processingEndTime - processingStartTime) / 1000);
 
-            // Send result paths to frontend as JSON with original filename
-            controller.enqueue(
-              JSON.stringify({
-                type: "result",
-                folder: `uploads/${uuid}`,
-                originalName: originalName,
-                vocals: `/uploads/${uuid}/${nameWithoutExt}_Vocals.wav`,
-                instrumental: `/uploads/${uuid}/${nameWithoutExt}_Instruments.wav`,
-              }) + "\n"
-            );
-          } else {
-            controller.error("Python process failed");
+          try {
+            if (code === 0) {
+              // Update upload record as completed
+              await UploadHistory.findByIdAndUpdate(uploadRecord._id, {
+                processingStatus: "completed",
+                processingEndTime: new Date(),
+                processingDuration: processingDuration,
+              });
+
+              // Send final 100% just in case
+              controller.enqueue(`PROGRESS:100\n`);
+
+              // Send result paths to frontend as JSON with original filename
+              controller.enqueue(
+                JSON.stringify({
+                  type: "result",
+                  folder: `uploads/${uuid}`,
+                  originalName: originalName,
+                  vocals: `/uploads/${uuid}/${nameWithoutExt}_Vocals.wav`,
+                  instrumental: `/uploads/${uuid}/${nameWithoutExt}_Instruments.wav`,
+                }) + "\n"
+              );
+            } else {
+              // Update upload record as failed
+              await UploadHistory.findByIdAndUpdate(uploadRecord._id, {
+                processingStatus: "failed",
+                processingEndTime: new Date(),
+                processingDuration: processingDuration,
+                errorMessage: `Processing failed with code ${code}`,
+              });
+
+              controller.error("Python process failed");
+            }
+          } catch (dbError) {
+            console.error("Database update error:", dbError);
+            // Continue with the response even if DB update fails
+            if (code === 0) {
+              controller.enqueue(`PROGRESS:100\n`);
+              controller.enqueue(
+                JSON.stringify({
+                  type: "result",
+                  folder: `uploads/${uuid}`,
+                  originalName: originalName,
+                  vocals: `/uploads/${uuid}/${nameWithoutExt}_Vocals.wav`,
+                  instrumental: `/uploads/${uuid}/${nameWithoutExt}_Instruments.wav`,
+                }) + "\n"
+              );
+            } else {
+              controller.error("Python process failed");
+            }
           }
+          
           controller.close(); // End stream
         });
       },
@@ -98,6 +176,20 @@ export async function POST(req: NextRequest) {
     });
   } catch (err: any) {
     console.error("Server error:", err);
+    
+    // Update upload record as failed if it was created
+    if (uploadRecord) {
+      try {
+        await UploadHistory.findByIdAndUpdate(uploadRecord._id, {
+          processingStatus: "failed",
+          processingEndTime: new Date(),
+          errorMessage: err.message || "Server error",
+        });
+      } catch (dbError) {
+        console.error("Failed to update upload record:", dbError);
+      }
+    }
+
     return new Response(err.message || "Internal Server Error", {
       status: 500,
     });

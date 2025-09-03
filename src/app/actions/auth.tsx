@@ -4,7 +4,7 @@ import jwt from "jsonwebtoken";
 import bcrypt from "bcryptjs";
 import dbConnect from "@/lib/mongodb";
 import User from "@/models/User";
-import LoginHistory from "@/models/LoginHistory";
+import UploadHistory from "@/models/UploadHistory";
 import PasswordReset from "@/models/PasswordReset"; 
 import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
@@ -100,12 +100,6 @@ export async function loginUser(formData: FormData): Promise<LoginResult> {
     if (!valid) {
       return { success: false, error: "Invalid password", message: "" };
     }
-
-    // Save login history
-    await LoginHistory.create({
-      userId: user._id,
-      action: "login"
-    });
 
     if (!process.env.JWT_SECRET) {
       throw new Error("JWT_SECRET is not set in .env.local");
@@ -204,12 +198,7 @@ export async function registerUser(formData: FormData): Promise<RegisterResult> 
       password: hashedPassword,
     });
 
-    // Save login history
-    await LoginHistory.create({
-      userId: user._id,
-      action: "register",
-    });
-
+  
     // Serialize user data properly - convert to plain object
     const userWithoutPassword = {
       id: user._id.toString(),
@@ -335,58 +324,6 @@ export async function getUserByEmail(formData: FormData): Promise<UserResult> {
     return {
       success: false,
       error: "Internal server error"
-    };
-  }
-}
-
-// 5. Get Login History
-export async function getLoginHistory(): Promise<HistoryResult> {
-  try {
-    const cookieStore = await cookies();
-    const token = cookieStore.get('auth-token')?.value;
-
-    if (!token) {
-      return {
-        success: false,
-        error: "No token provided"
-      };
-    }
-
-    const decoded = jwt.verify(token, process.env.JWT_SECRET!) as any;
-    await dbConnect();
-
-    const history = await LoginHistory.find({ userId: decoded.userId })
-      .sort({ date: -1 })
-      .limit(10)
-      .select('action date')
-      .lean();
-
-    // Format the history with proper timestamps and serialize properly
-    const formattedHistory = history.map(item => ({
-      action: item.action,
-      date: item.date ? new Date(item.date).toISOString() : null,
-      timestamp: item.date ? new Date(item.date).toISOString() : null,
-      formattedDate: item.date ? new Date(item.date).toLocaleString('en-US', {
-        year: 'numeric',
-        month: 'short',
-        day: 'numeric',
-        hour: '2-digit',
-        minute: '2-digit',
-        second: '2-digit',
-        hour12: true
-      }) : null
-    }));
-
-    return {
-      success: true,
-      history: formattedHistory
-    };
-
-  } catch (error: any) {
-    console.error("History fetch error:", error);
-    return {
-      success: false,
-      error: "Invalid token"
     };
   }
 }
@@ -624,6 +561,71 @@ export async function resetPassword(formData: FormData): Promise<ResetPasswordRe
       success: false,
       error: "Failed to reset password",
       message: ""
+    };
+  }
+}
+
+// 10. Get Upload History (Server Action)
+export async function getUploadHistory(): Promise<{
+  success: boolean;
+  uploads?: any[];
+  error?: string;
+}> {
+  try {
+    const cookieStore = await cookies();
+    const token = cookieStore.get('auth-token')?.value;
+
+    if (!token) {
+      return {
+        success: false,
+        error: "No token provided"
+      };
+    }
+
+    const decoded = jwt.verify(token, process.env.JWT_SECRET!) as any;
+    await dbConnect();
+
+    const uploads = await UploadHistory.find({ userId: decoded.userId })
+      .sort({ createdAt: -1 })
+      .limit(20)
+      .lean();
+
+    // Format the history with proper timestamps and serialize properly
+    const formattedUploads = uploads.map(upload => ({
+      id: String(upload._id),
+      originalFileName: upload.originalFileName,
+      originalFileSize: upload.originalFileSize,
+      folderPath: upload.folderPath,
+      vocalsFilePath: upload.vocalsFilePath,
+      instrumentalFilePath: upload.instrumentalFilePath,
+      processingStatus: upload.processingStatus,
+      processingStartTime: upload.processingStartTime ? new Date(upload.processingStartTime).toISOString() : null,
+      processingEndTime: upload.processingEndTime ? new Date(upload.processingEndTime).toISOString() : null,
+      processingDuration: upload.processingDuration,
+      errorMessage: upload.errorMessage,
+      fileFormat: upload.fileFormat,
+      createdAt: upload.createdAt ? new Date(upload.createdAt).toISOString() : null,
+      updatedAt: upload.updatedAt ? new Date(upload.updatedAt).toISOString() : null,
+      formattedDate: upload.createdAt ? new Date(upload.createdAt).toLocaleString('en-US', {
+        year: 'numeric',
+        month: 'short',
+        day: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit',
+        hour12: true
+      }) : null
+    }));
+
+    return {
+      success: true,
+      uploads: formattedUploads
+    };
+
+  } catch (error: any) {
+    console.error("Upload history fetch error:", error);
+    return {
+      success: false,
+      error: "Invalid token"
     };
   }
 }

@@ -20,7 +20,6 @@ import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import {
   getCurrentUser,
-  getLoginHistory,
   logoutUser,
 } from "@/app/actions/auth";
 
@@ -29,7 +28,6 @@ export default function Home() {
 
   // Authentication state
   const [user, setUser] = useState<any>(null);
-  const [loginHistory, setLoginHistory] = useState<any[]>([]);
   const [isAuthenticating, setIsAuthenticating] = useState(true);
 
   // App state
@@ -49,12 +47,6 @@ export default function Home() {
   const [showLyricsCard, setShowLyricsCard] = useState(false);
   const [lyricsLoading, setLyricsLoading] = useState(false);
 
-  // History modal state
-  const [showHistoryModal, setShowHistoryModal] = useState(false);
-  const [historyPos, setHistoryPos] = useState({ x: 100, y: 100 });
-  const draggingRef = useRef(false);
-  const dragStartPos = useRef<{ x: number; y: number }>({ x: 0, y: 0 });
-  const modalStartPos = useRef<{ x: number; y: number }>({ x: 0, y: 0 });
 
   // Welcome banner state
   const [showWelcome, setShowWelcome] = useState(true);
@@ -76,8 +68,7 @@ export default function Home() {
         const result = await getCurrentUser();
         if (result.success && result.user) {
           setUser(result.user);
-          // Fetch login history after successful auth
-          await fetchLoginHistory();
+      
         } else {
           // No valid auth, redirect to login
           router.push("/login");
@@ -95,21 +86,7 @@ export default function Home() {
     checkAuth();
   }, [router]);
 
-  const fetchLoginHistory = async () => {
-    try {
-      const result = await getLoginHistory();
-      if (result.success && result.history) {
-        setLoginHistory(result.history);
-      } else {
-        console.error("Failed to fetch login history:", result.error);
-        setLoginHistory([]);
-      }
-    } catch (error) {
-      console.error("Failed to fetch login history:", error);
-      setLoginHistory([]);
-    }
-  };
-
+  
   const handleLogout = async () => {
     try {
       await logoutUser(); // This will automatically redirect to login
@@ -229,49 +206,7 @@ export default function Home() {
     }
   };
 
-  // Drag handlers for history modal
-  const handleDragStart = (e: React.MouseEvent | React.TouchEvent) => {
-    draggingRef.current = true;
-    const clientX = "touches" in e ? e.touches[0].clientX : e.clientX;
-    const clientY = "touches" in e ? e.touches[0].clientY : e.clientY;
-    dragStartPos.current = { x: clientX, y: clientY };
-    modalStartPos.current = { ...historyPos };
-  };
 
-  const handleDragMove = (e: MouseEvent | TouchEvent) => {
-    if (!draggingRef.current) return;
-    const clientX =
-      "touches" in e && e.touches.length > 0
-        ? e.touches[0].clientX
-        : (e as MouseEvent).clientX;
-    const clientY =
-      "touches" in e && e.touches.length > 0
-        ? e.touches[0].clientY
-        : (e as MouseEvent).clientY;
-    const deltaX = clientX - dragStartPos.current.x;
-    const deltaY = clientY - dragStartPos.current.y;
-    setHistoryPos({
-      x: modalStartPos.current.x + deltaX,
-      y: modalStartPos.current.y + deltaY,
-    });
-  };
-
-  const handleDragEnd = () => {
-    draggingRef.current = false;
-  };
-
-  useEffect(() => {
-    window.addEventListener("mousemove", handleDragMove);
-    window.addEventListener("mouseup", handleDragEnd);
-    window.addEventListener("touchmove", handleDragMove);
-    window.addEventListener("touchend", handleDragEnd);
-    return () => {
-      window.removeEventListener("mousemove", handleDragMove);
-      window.removeEventListener("mouseup", handleDragEnd);
-      window.removeEventListener("touchmove", handleDragMove);
-      window.removeEventListener("touchend", handleDragEnd);
-    };
-  }, []);
 
   // Show loading while authenticating
   if (isAuthenticating) {
@@ -318,15 +253,15 @@ export default function Home() {
                 About
               </NavigationMenuLink>
             </NavigationMenuItem>
-            <NavigationMenuItem>
-              <button
-                onClick={() => setShowHistoryModal(true)}
-                className="hover:text-purple-300 transition text-lg font-medium bg-transparent border-none cursor-pointer"
-              >
-                History
-              </button>
-            </NavigationMenuItem>
-
+           {/*the History button in your NavigationMenu:*/}
+<NavigationMenuItem>
+  <button
+    onClick={() => router.push("/history")}
+    className="hover:text-purple-300 transition text-lg font-medium bg-transparent border-none cursor-pointer"
+  >
+    History
+  </button>
+</NavigationMenuItem>
             <NavigationMenuItem>
               <button
                 onClick={handleLogout}
@@ -481,64 +416,7 @@ export default function Home() {
         </p>
       </section>
 
-      {/* Draggable History Modal */}
-      {showHistoryModal && (
-        <div
-          className="fixed z-50 w-[400px] max-h-96 bg-[#2A2A2A] rounded-lg p-4 shadow-lg overflow-y-auto cursor-grab border border-purple-500"
-          style={{ left: historyPos.x, top: historyPos.y }}
-          onMouseDown={handleDragStart}
-          onTouchStart={handleDragStart}
-        >
-          <div className="flex justify-between items-center mb-3 cursor-move select-none">
-            <h3 className="text-xl font-bold text-purple-400">Login History</h3>
-            <button
-              onClick={() => setShowHistoryModal(false)}
-              className="text-gray-400 hover:text-white text-xl"
-            >
-              ×
-            </button>
-          </div>
-
-          {loginHistory.length > 0 ? (
-            <div className="space-y-3">
-              {loginHistory.slice(0, 8).map((item: any, idx: number) => (
-                <div
-                  key={idx}
-                  className="bg-[#1F1F1F] p-3 rounded-lg border border-purple-800/30"
-                >
-                  <div className="flex justify-between items-start">
-                    <div>
-                      <span className="text-purple-300 font-medium">
-                        {item.action}
-                      </span>
-                    </div>
-                    <div className="text-right">
-                      <div className="text-xs text-gray-400">
-                        {item.formattedDate ||
-                          new Date(item.date).toLocaleString("en-US", {
-                            year: "numeric",
-                            month: "short",
-                            day: "numeric",
-                            hour: "2-digit",
-                            minute: "2-digit",
-                            hour12: true,
-                          })}
-                      </div>
-                      <div className="text-xs text-gray-500 mt-1">
-                        {getTimeAgo(new Date(item.date || item.timestamp))}
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          ) : (
-            <p className="text-purple-300 text-center py-4">
-              No login history available.
-            </p>
-          )}
-        </div>
-      )}
+     
     </div>
   );
 }
