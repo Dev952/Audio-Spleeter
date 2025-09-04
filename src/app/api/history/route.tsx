@@ -3,6 +3,8 @@ import jwt from 'jsonwebtoken';
 import { cookies } from 'next/headers';
 import dbConnect from '@/lib/mongodb';
 import UploadHistory from '@/models/UploadHistory';
+import { unlink } from 'fs/promises';
+import { join } from 'path';
 
 export async function GET(req: NextRequest) {
   try {
@@ -103,6 +105,206 @@ export async function GET(req: NextRequest) {
       { success: false, error: 'Internal server error' },
       { status: 500 }
     );
+  }
+}
+
+// DELETE method for removing specific upload or clearing all
+export async function DELETE(req: NextRequest) {
+  try {
+    // Get authentication token from cookies
+    const cookieStore = await cookies();
+    const token = cookieStore.get('auth-token')?.value;
+
+    if (!token) {
+      return NextResponse.json(
+        { success: false, error: 'Authentication required' },
+        { status: 401 }
+      );
+    }
+
+    // Verify JWT token
+    let decoded: any;
+    try {
+      decoded = jwt.verify(token, process.env.JWT_SECRET!);
+    } catch (error) {
+      return NextResponse.json(
+        { success: false, error: 'Invalid token' },
+        { status: 401 }
+      );
+    }
+
+    const userId = decoded.userId;
+    const { searchParams } = new URL(req.url);
+    const uploadId = searchParams.get('id');
+    const clearAll = searchParams.get('clearAll') === 'true';
+
+    await dbConnect();
+
+    if (clearAll) {
+      // Clear all uploads for the user
+      const uploads = await UploadHistory.find({ userId });
+      
+      console.log(`🗑️ Starting to clear all uploads for user ${userId}. Found ${uploads.length} uploads.`);
+      
+      // Delete files from filesystem
+      const deletePromises = uploads.map(async (upload) => {
+        try {
+          console.log(`🔍 Processing upload: ${upload.originalFileName}`);
+          console.log(`   Vocals path: ${upload.vocalsFilePath}`);
+          console.log(`   Instrumental path: ${upload.instrumentalFilePath}`);
+          console.log(`   Folder path: ${upload.folderPath}`);
+          
+          if (upload.vocalsFilePath) {
+            await deleteFileIfExists(upload.vocalsFilePath);
+          }
+          if (upload.instrumentalFilePath) {
+            await deleteFileIfExists(upload.instrumentalFilePath);
+          }
+          // Delete folder if it exists and is empty
+          if (upload.folderPath) {
+            await deleteFolderIfEmpty(upload.folderPath);
+          }
+        } catch (error) {
+          console.error(`❌ Error deleting files for upload ${upload._id}:`, error);
+        }
+      });
+
+      await Promise.all(deletePromises);
+
+      // Delete all records from database
+      const result = await UploadHistory.deleteMany({ userId });
+      
+      console.log(`✅ Successfully cleared ${result.deletedCount} uploads from database`);
+
+      return NextResponse.json({
+        success: true,
+        message: `Successfully cleared ${result.deletedCount} uploads`,
+        deletedCount: result.deletedCount
+      });
+
+    } else if (uploadId) {
+      // Delete specific upload
+      const upload = await UploadHistory.findOne({ _id: uploadId, userId });
+
+      if (!upload) {
+        return NextResponse.json(
+          { success: false, error: 'Upload not found' },
+          { status: 404 }
+        );
+      }
+
+      console.log(`🗑️ Deleting specific upload: ${upload.originalFileName}`);
+      console.log(`   Vocals path: ${upload.vocalsFilePath}`);
+      console.log(`   Instrumental path: ${upload.instrumentalFilePath}`);
+      console.log(`   Folder path: ${upload.folderPath}`);
+
+      // Delete files from filesystem
+      try {
+        if (upload.vocalsFilePath) {
+          await deleteFileIfExists(upload.vocalsFilePath);
+        }
+        if (upload.instrumentalFilePath) {
+          await deleteFileIfExists(upload.instrumentalFilePath);
+        }
+        // Delete folder if it exists and is empty
+        if (upload.folderPath) {
+          await deleteFolderIfEmpty(upload.folderPath);
+        }
+      } catch (error) {
+        console.error(`❌ Error deleting files for upload ${uploadId}:`, error);
+      }
+
+      // Delete record from database
+      await UploadHistory.deleteOne({ _id: uploadId, userId });
+      
+      console.log(`✅ Successfully deleted upload from database`);
+
+      return NextResponse.json({
+        success: true,
+        message: 'Upload deleted successfully'
+      });
+
+    } else {
+      return NextResponse.json(
+        { success: false, error: 'Either uploadId or clearAll parameter is required' },
+        { status: 400 }
+      );
+    }
+
+  } catch (error: any) {
+    console.error('Delete API error:', error);
+    return NextResponse.json(
+      { success: false, error: 'Internal server error' },
+      { status: 500 }
+    );
+  }
+}
+
+// Helper function to delete file if it exists
+async function deleteFileIfExists(filePath: string) {
+  try {
+    let absolutePath;
+    
+    // Handle different path formats
+    if (filePath.startsWith('/uploads/')) {
+      // Remove leading slash and join with public directory
+      absolutePath = join(process.cwd(), 'public', filePath.substring(1));
+    } else if (filePath.startsWith('uploads/')) {
+      // Already relative, join with public directory
+      absolutePath = join(process.cwd(), 'public', filePath);
+    } else if (filePath.startsWith('/')) {
+      // Absolute path from root, assume it's already complete
+      absolutePath = join(process.cwd(), 'public', filePath.substring(1));
+    } else {
+      // Relative path, join with public/uploads
+      absolutePath = join(process.cwd(), 'public', 'uploads', filePath);
+    }
+
+    await unlink(absolutePath);
+    console.log(`✅ Successfully deleted file: ${absolutePath}`);
+  } catch (error: any) {
+    if (error.code === 'ENOENT') {
+      console.log(`⚠️ File not found (already deleted): ${filePath}`);
+    } else {
+      console.error(`❌ Error deleting file ${filePath}:`, error);
+      throw error;
+    }
+  }
+}
+
+// Helper function to delete folder if empty
+async function deleteFolderIfEmpty(folderPath: string) {
+  try {
+    const fs = require('fs').promises;
+    const fsSync = require('fs');
+    
+    let absolutePath;
+    
+    // Handle different folder path formats
+    if (folderPath.startsWith('/uploads/')) {
+      absolutePath = join(process.cwd(), 'public', folderPath.substring(1));
+    } else if (folderPath.startsWith('uploads/')) {
+      absolutePath = join(process.cwd(), 'public', folderPath);
+    } else if (folderPath.startsWith('/')) {
+      absolutePath = join(process.cwd(), 'public', folderPath.substring(1));
+    } else {
+      absolutePath = join(process.cwd(), 'public', 'uploads', folderPath);
+    }
+    
+    // Check if directory exists
+    if (fsSync.existsSync(absolutePath)) {
+      const files = await fs.readdir(absolutePath);
+      if (files.length === 0) {
+        await fs.rmdir(absolutePath);
+        console.log(`✅ Successfully deleted empty folder: ${absolutePath}`);
+      } else {
+        console.log(`📁 Folder not empty, keeping: ${absolutePath} (contains ${files.length} files)`);
+      }
+    } else {
+      console.log(`⚠️ Folder not found (already deleted): ${folderPath}`);
+    }
+  } catch (error: any) {
+    console.error(`❌ Error deleting folder ${folderPath}:`, error);
   }
 }
 

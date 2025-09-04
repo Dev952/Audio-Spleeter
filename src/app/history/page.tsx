@@ -5,6 +5,17 @@ import { useRouter } from "next/navigation";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
+import {
   ArrowLeft,
   Download,
   Music,
@@ -15,6 +26,8 @@ import {
   AlertCircle,
   CheckCircle,
   Loader2,
+  Trash2,
+  TrashIcon,
 } from "lucide-react";
 import { toast } from "sonner";
 import { getCurrentUser } from "@/app/actions/auth";
@@ -53,6 +66,8 @@ export default function HistoryPage() {
   const router = useRouter();
   const [uploads, setUploads] = useState<UploadRecord[]>([]);
   const [loading, setLoading] = useState(true);
+  const [deleteLoading, setDeleteLoading] = useState<string | null>(null);
+  const [clearAllLoading, setClearAllLoading] = useState(false);
   const [pagination, setPagination] = useState<PaginationInfo>({
     currentPage: 1,
     totalPages: 1,
@@ -124,6 +139,56 @@ export default function HistoryPage() {
     }
   };
 
+  // Delete specific upload
+  const handleDeleteUpload = async (uploadId: string, fileName: string) => {
+    try {
+      setDeleteLoading(uploadId);
+      const response = await fetch(`/api/history?id=${uploadId}`, {
+        method: 'DELETE',
+      });
+
+      const data = await response.json();
+
+      if (data.success) {
+        toast.success(`Successfully deleted "${fileName}"`);
+        // Refresh the current page
+        await fetchHistory(pagination.currentPage);
+      } else {
+        toast.error(data.error || "Failed to delete upload");
+      }
+    } catch (error) {
+      console.error("Failed to delete upload:", error);
+      toast.error("Failed to delete upload");
+    } finally {
+      setDeleteLoading(null);
+    }
+  };
+
+  // Clear all uploads
+  const handleClearAll = async () => {
+    try {
+      setClearAllLoading(true);
+      const response = await fetch('/api/history?clearAll=true', {
+        method: 'DELETE',
+      });
+
+      const data = await response.json();
+
+      if (data.success) {
+        toast.success(`Successfully cleared all uploads (${data.deletedCount} items)`);
+        // Reset to page 1 and refresh
+        await fetchHistory(1);
+      } else {
+        toast.error(data.error || "Failed to clear uploads");
+      }
+    } catch (error) {
+      console.error("Failed to clear uploads:", error);
+      toast.error("Failed to clear uploads");
+    } finally {
+      setClearAllLoading(false);
+    }
+  };
+
   // Get status icon and color
   const getStatusDisplay = (status: string, errorMessage?: string) => {
     switch (status) {
@@ -182,7 +247,54 @@ export default function HistoryPage() {
             <div className="h-6 w-px bg-purple-500/50" />
             <h1 className="text-2xl font-bold">Upload History</h1>
           </div>
-          {user && <div className="text-purple-300">Hii, {user.name}...</div>}
+          
+          <div className="flex items-center space-x-4">
+            {user && <div className="text-purple-300">Hi, {user.name}!</div>}
+            
+            {/* Clear All Button */}
+            {uploads.length > 0 && (
+              <AlertDialog>
+                <AlertDialogTrigger asChild>
+                  <Button
+                    variant="outline"
+                    className="bg-red-500/10 border-red-500/50 text-red-400 hover:bg-red-500/20 hover:border-red-400/70 transition-all duration-300"
+                    disabled={clearAllLoading}
+                  >
+                    {clearAllLoading ? (
+                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    ) : (
+                      <TrashIcon className="h-4 w-4 mr-2" />
+                    )}
+                    Clear All
+                  </Button>
+                </AlertDialogTrigger>
+                <AlertDialogContent className="bg-[#2A2A2A] text-white border border-red-500/30">
+                  <AlertDialogHeader>
+                    <AlertDialogTitle className="text-red-400">Clear All Uploads</AlertDialogTitle>
+                    <AlertDialogDescription className="text-gray-300">
+                      This will permanently delete all your uploads and their associated files. 
+                      This action cannot be undone. Are you sure you want to continue?
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel className="bg-[#3A3A3A] text-white border-gray-600 hover:bg-[#4A4A4A]">
+                      Cancel
+                    </AlertDialogCancel>
+                    <AlertDialogAction
+                      onClick={handleClearAll}
+                      className="bg-red-600 text-white hover:bg-red-700"
+                      disabled={clearAllLoading}
+                    >
+                      {clearAllLoading ? (
+                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                      ) : null}
+                      Clear All
+                    </AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
+            )}
+          </div>
         </div>
       </div>
 
@@ -304,13 +416,55 @@ export default function HistoryPage() {
                             )}
                           </div>
                         </div>
-                        <div
-                          className={`flex items-center space-x-1 ${statusDisplay.className}`}
-                        >
-                          {statusDisplay.icon}
-                          <span className="text-sm font-medium">
-                            {statusDisplay.text}
-                          </span>
+                        
+                        <div className="flex items-center space-x-3">
+                          <div
+                            className={`flex items-center space-x-1 ${statusDisplay.className}`}
+                          >
+                            {statusDisplay.icon}
+                            <span className="text-sm font-medium">
+                              {statusDisplay.text}
+                            </span>
+                          </div>
+
+                          {/* Delete Button */}
+                          <AlertDialog>
+                            <AlertDialogTrigger asChild>
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                className="bg-red-500/10 border-red-500/50 text-red-400 hover:bg-red-500/20 hover:border-red-400/70 transition-all duration-300"
+                                disabled={deleteLoading === upload.id}
+                              >
+                                {deleteLoading === upload.id ? (
+                                  <Loader2 className="h-4 w-4 animate-spin" />
+                                ) : (
+                                  <Trash2 className="h-4 w-4" />
+                                )}
+                              </Button>
+                            </AlertDialogTrigger>
+                            <AlertDialogContent className="bg-[#2A2A2A] text-white border border-red-500/30">
+                              <AlertDialogHeader>
+                                <AlertDialogTitle className="text-red-400">Delete Upload</AlertDialogTitle>
+                                <AlertDialogDescription className="text-gray-300">
+                                  Are you sure you want to delete "{upload.originalFileName}"? 
+                                  This will permanently remove the upload and all associated files. 
+                                  This action cannot be undone.
+                                </AlertDialogDescription>
+                              </AlertDialogHeader>
+                              <AlertDialogFooter>
+                                <AlertDialogCancel className="bg-[#3A3A3A] text-white border-gray-600 hover:bg-[#4A4A4A] center">
+                                  Cancel
+                                </AlertDialogCancel>
+                                <AlertDialogAction
+                                  onClick={() => handleDeleteUpload(upload.id, upload.originalFileName)}
+                                  className="bg-red-600 text-white hover:bg-red-700"
+                                >
+                                  Delete
+                                </AlertDialogAction>
+                              </AlertDialogFooter>
+                            </AlertDialogContent>
+                          </AlertDialog>
                         </div>
                       </div>
                     </CardHeader>
@@ -379,7 +533,7 @@ export default function HistoryPage() {
                 <Button
                   variant="outline"
                   onClick={() => handlePageChange(pagination.currentPage - 1)}
-                  disabled={!pagination.hasPrevPage}
+                  disabled={!pagination.hasPrevPage || loading}
                   className="bg-[#2A2A2A] border-purple-500/30 text-white hover:bg-purple-600/20"
                 >
                   Previous
@@ -402,6 +556,7 @@ export default function HistoryPage() {
                               : "outline"
                           }
                           onClick={() => handlePageChange(pageNumber)}
+                          disabled={loading}
                           className={
                             pageNumber === pagination.currentPage
                               ? "bg-purple-600 text-white"
@@ -418,7 +573,7 @@ export default function HistoryPage() {
                 <Button
                   variant="outline"
                   onClick={() => handlePageChange(pagination.currentPage + 1)}
-                  disabled={!pagination.hasNextPage}
+                  disabled={!pagination.hasNextPage || loading}
                   className="bg-[#2A2A2A] border-purple-500/30 text-white hover:bg-purple-600/20"
                 >
                   Next
