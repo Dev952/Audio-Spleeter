@@ -234,7 +234,7 @@ export default function LoginPage() {
               <Button
                 type="submit"
                 disabled={loading}
-                className="w-full bg-purple-700 hover:bg-purple-800 text-white font-bold disabled:opacity-50"
+                className="cursor-pointer w-full bg-purple-700 hover:bg-purple-800 text-white font-bold disabled:opacity-50"
               >
                 {loading ? "Logging in..." : "Log In"}
               </Button>
@@ -245,7 +245,7 @@ export default function LoginPage() {
               <button
                 type="button"
                 onClick={() => setCurrentStep('forgot-email')}
-                className="text-sm text-purple-400 hover:underline hover:text-purple-300 transition-colors"
+                className="cursor-pointer text-sm text-purple-400 hover:underline hover:text-purple-300 transition-colors"
               >
                 Forgot your password?
               </button>
@@ -266,7 +266,7 @@ export default function LoginPage() {
             <div className="flex items-center mb-6">
               <button
                 onClick={resetToLogin}
-                className="text-purple-400 hover:text-purple-300 mr-3 text-xl transition-colors"
+                className="cursor-pointer text-purple-400 hover:text-purple-300 mr-3 text-xl transition-colors"
               >
                 ←
               </button>
@@ -298,7 +298,7 @@ export default function LoginPage() {
               <Button
                 type="submit"
                 disabled={loading}
-                className="w-full bg-purple-700 hover:bg-purple-800 text-white font-bold disabled:opacity-50"
+                className="cursor-pointer w-full bg-purple-700 hover:bg-purple-800 text-white font-bold disabled:opacity-50"
               >
                 {loading ? "Sending..." : "Send Verification Code"}
               </Button>
@@ -312,7 +312,7 @@ export default function LoginPage() {
             <div className="flex items-center mb-6">
               <button
                 onClick={() => setCurrentStep('forgot-email')}
-                className="text-purple-400 hover:text-purple-300 mr-3 text-xl transition-colors"
+                className="cursor-pointer text-purple-400 hover:text-purple-300 mr-3 text-xl transition-colors"
               >
                 ←
               </button>
@@ -346,7 +346,7 @@ export default function LoginPage() {
               <Button
                 type="submit"
                 disabled={loading || verificationCode.length !== 6}
-                className="w-full bg-purple-700 hover:bg-purple-800 text-white font-bold disabled:opacity-50"
+                className="cursor-pointer w-full bg-purple-700 hover:bg-purple-800 text-white font-bold disabled:opacity-50"
               >
                 {loading ? "Verifying..." : "Verify Code"}
               </Button>
@@ -357,7 +357,7 @@ export default function LoginPage() {
                 type="button"
                 onClick={handleForgotPassword}
                 disabled={loading}
-                className="text-sm text-purple-400 hover:underline disabled:opacity-50 transition-colors"
+                className="cursor-pointer text-sm text-purple-400 hover:underline disabled:opacity-50 transition-colors"
               >
                 Resend Code
               </button>
@@ -371,7 +371,7 @@ export default function LoginPage() {
             <div className="flex items-center mb-6">
               <button
                 onClick={() => setCurrentStep('verify-code')}
-                className="text-purple-400 hover:text-purple-300 mr-3 text-xl transition-colors"
+                className="cursor-pointer text-purple-400 hover:text-purple-300 mr-3 text-xl transition-colors"
               >
                 ←
               </button>
@@ -424,7 +424,7 @@ export default function LoginPage() {
               <Button
                 type="submit"
                 disabled={loading || !newPassword || !confirmPassword || newPassword !== confirmPassword}
-                className="w-full bg-purple-700 hover:bg-purple-800 text-white font-bold disabled:opacity-50"
+                className="cursor-pointer w-full bg-purple-700 hover:bg-purple-800 text-white font-bold disabled:opacity-50"
               >
                 {loading ? "Resetting..." : "Reset Password"}
               </Button>

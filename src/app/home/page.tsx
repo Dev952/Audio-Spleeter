@@ -15,13 +15,11 @@ import {
   NavigationMenuList,
   NavigationMenuLink,
 } from "@/components/ui/navigation-menu";
+import { Button } from "@/components/ui/button";
 import AudioControl from "@/components/ui/AudioControl";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import {
-  getCurrentUser,
-  logoutUser,
-} from "@/app/actions/auth";
+import { getCurrentUser, logoutUser } from "@/app/actions/auth";
 
 export default function Home() {
   const router = useRouter();
@@ -41,12 +39,17 @@ export default function Home() {
   const [loading, setLoading] = useState(false);
   const [progress, setProgress] = useState<number>(0);
 
+  // Recent uploads drawer state
+  const [recentUploads, setRecentUploads] = useState<any[]>([]);
+  const [drawerOpen, setDrawerOpen] = useState(false);
+
+  // Effects removed on home page
+
   // Lyrics state
   const [lyrics, setLyrics] = useState<string[]>([]);
   const [currentLine, setCurrentLine] = useState(0);
   const [showLyricsCard, setShowLyricsCard] = useState(false);
   const [lyricsLoading, setLyricsLoading] = useState(false);
-
 
   // Welcome banner state
   const [showWelcome, setShowWelcome] = useState(true);
@@ -68,7 +71,6 @@ export default function Home() {
         const result = await getCurrentUser();
         if (result.success && result.user) {
           setUser(result.user);
-      
         } else {
           // No valid auth, redirect to login
           router.push("/login");
@@ -86,7 +88,22 @@ export default function Home() {
     checkAuth();
   }, [router]);
 
-  
+  // Fetch recent uploads for drawer
+  useEffect(() => {
+    const fetchRecent = async () => {
+      try {
+        const res = await fetch(`/api/history?limit=100`);
+        const data = await res.json();
+        if (data?.success && Array.isArray(data.uploads)) {
+          setRecentUploads(data.uploads);
+        }
+      } catch (e) {
+        // ignore
+      }
+    };
+    fetchRecent();
+  }, []);
+
   const handleLogout = async () => {
     try {
       await logoutUser(); // This will automatically redirect to login
@@ -206,8 +223,6 @@ export default function Home() {
     }
   };
 
-
-
   // Show loading while authenticating
   if (isAuthenticating) {
     return (
@@ -238,6 +253,23 @@ export default function Home() {
 
           <NavigationMenuList className="flex space-x-6 items-center">
             <NavigationMenuItem>
+              <button
+                onClick={() => router.push("/effects")}
+                className="cursor-pointer 
+      px-6 py-2 text-lg font-semibold
+      rounded-xl text-purple-300
+      border border-purple-400
+      shadow-[0_0_10px_rgba(168,85,247,0.8)]
+      hover:shadow-[0_0_20px_rgba(168,85,247,1)]
+      hover:text-white hover:bg-purple-500/20
+      transition duration-300
+    "
+              >
+                Audio Effects
+              </button>
+            </NavigationMenuItem>
+
+            <NavigationMenuItem>
               <NavigationMenuLink
                 href="#home"
                 className="hover:text-purple-300 transition text-lg font-medium"
@@ -245,6 +277,7 @@ export default function Home() {
                 Home
               </NavigationMenuLink>
             </NavigationMenuItem>
+
             <NavigationMenuItem>
               <NavigationMenuLink
                 href="#about"
@@ -253,15 +286,14 @@ export default function Home() {
                 About
               </NavigationMenuLink>
             </NavigationMenuItem>
-           {/*the History button in your NavigationMenu:*/}
-<NavigationMenuItem>
-  <button
-    onClick={() => router.push("/history")}
-    className="hover:text-purple-300 transition text-lg font-medium bg-transparent border-none cursor-pointer"
-  >
-    History
-  </button>
-</NavigationMenuItem>
+            <NavigationMenuItem>
+              <button
+                onClick={() => router.push("/history")}
+                className="hover:text-purple-300 transition text-lg font-medium bg-transparent border-none cursor-pointer"
+              >
+                History
+              </button>
+            </NavigationMenuItem>
             <NavigationMenuItem>
               <button
                 onClick={handleLogout}
@@ -316,7 +348,7 @@ export default function Home() {
             <button
               onClick={handleUpload}
               disabled={loading || !file}
-              className="relative overflow-hidden rounded-full px-6 py-3 font-bold text-white shadow-lg disabled:opacity-70 bg-purple-600 w-full max-w-xs"
+              className="cursor-pointer relative overflow-hidden rounded-full px-6 py-3 font-bold text-white shadow-lg disabled:opacity-70 bg-purple-600 w-full max-w-xs"
             >
               <span className="relative z-10">
                 {loading ? `Processing ${progress}%` : "Upload"}
@@ -335,6 +367,71 @@ export default function Home() {
             )}
           </CardFooter>
         </Card>
+
+        {/* Previous Uploads Drawer - attached (no gap) */}
+        <div className="w-full max-w-3xl mt-0">
+          <div className="bg-[#1F1F1F] border border-neutral-800 rounded-2xl overflow-hidden">
+            <button
+              onClick={() => setDrawerOpen((o) => !o)}
+              className="cursor-pointer w-full text-left px-5 py-4 flex items-center justify-between hover:bg-white/5 transition"
+            >
+              <span className="text-purple-300 font-semibold">
+                Previous uploaded
+              </span>
+              <span className="text-sm text-gray-400">
+                {drawerOpen ? "Hide" : "Show"}
+              </span>
+            </button>
+            {drawerOpen && (
+              <div className="px-5 pb-5 space-y-3 max-h-64 overflow-y-auto">
+                {recentUploads.length === 0 && (
+                  <p className="text-gray-400">No recent uploads found.</p>
+                )}
+                {recentUploads.map((u) => (
+                  <div
+                    key={u.id}
+                    className="rounded-lg bg-[#1A1A1A] border border-neutral-800 p-3"
+                  >
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                      <div>
+                        <p className="text-white font-medium">
+                          {u.originalFileName}
+                        </p>
+                        <p className="text-xs text-gray-400">
+                          {u.formattedDate || u.timeAgo}
+                        </p>
+                      </div>
+                    </div>
+                    <div className="mt-2 flex flex-wrap gap-3">
+                      {u.vocalsFilePath && (
+                        <a
+                          href={u.vocalsFilePath}
+                          download
+                          className="text-sm text-purple-300 hover:text-purple-200 underline"
+                          target="_blank"
+                          rel="noreferrer"
+                        >
+                          Vocals
+                        </a>
+                      )}
+                      {u.instrumentalFilePath && (
+                        <a
+                          href={u.instrumentalFilePath}
+                          download
+                          className="text-sm text-purple-300 hover:text-purple-200 underline"
+                          target="_blank"
+                          rel="noreferrer"
+                        >
+                          Instrumental
+                        </a>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
 
         {result && (
           <div className="mt-6 text-center text-white space-y-6 w-full max-w-4xl">
@@ -370,10 +467,14 @@ export default function Home() {
                 </audio>
               </div>
             </div>
+
+            {/* Effects buttons removed */}
+
+            {/* Lyrics Button */}
             <button
               onClick={handleGenerateLyrics}
               disabled={lyricsLoading}
-              className={`mt-4 px-6 py-2 rounded-full text-white font-bold transition-all ${
+              className={`cursor-pointer mt-4 px-6 py-2 rounded-full text-white font-bold transition-all ${
                 lyricsLoading
                   ? "animate-pulse bg-purple-800 cursor-not-allowed"
                   : "bg-purple-600 hover:bg-purple-700"
@@ -383,6 +484,8 @@ export default function Home() {
             </button>
           </div>
         )}
+
+        {/* Pitch & Reverb section removed from home */}
 
         {showLyricsCard && (
           <Card className="mt-4 w-full max-w-3xl bg-[#2A2A2A] text-white shadow-lg border border-purple-500">
@@ -415,8 +518,6 @@ export default function Home() {
           built for creators like you.
         </p>
       </section>
-
-     
     </div>
   );
 }

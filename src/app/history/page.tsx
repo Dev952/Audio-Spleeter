@@ -239,7 +239,7 @@ export default function HistoryPage() {
           <div className="flex items-center space-x-4">
             <Button
               onClick={() => router.push("/")}
-              className="backdrop-blur-sm bg-white/10 hover:bg-white/20 border border-white/20 hover:border-purple-400/50 text-white font-medium px-6 py-2.5 rounded-xl transition-all duration-300 hover:shadow-xl hover:shadow-purple-500/20 group"
+              className="cursor-pointer backdrop-blur-sm bg-white/10 hover:bg-white/20 border border-white/20 hover:border-purple-400/50 text-white font-medium px-6 py-2.5 rounded-xl transition-all duration-300 hover:shadow-xl hover:shadow-purple-500/20 group"
             >
               <ArrowLeft className="h-4 w-4 mr-2 transition-transform group-hover:-translate-x-1" />
               Back to Home
@@ -257,7 +257,7 @@ export default function HistoryPage() {
                 <AlertDialogTrigger asChild>
                   <Button
                     variant="outline"
-                    className="bg-red-500/10 border-red-500/50 text-red-400 hover:bg-red-500/20 hover:border-red-400/70 transition-all duration-300"
+                    className="cursor-pointer bg-red-500/10 border-red-500/50 text-red-400 hover:bg-red-500/20 hover:border-red-400/70 transition-all duration-300"
                     disabled={clearAllLoading}
                   >
                     {clearAllLoading ? (
@@ -318,7 +318,7 @@ export default function HistoryPage() {
               </p>
               <Button
                 onClick={() => router.push("/")}
-                className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-purple-600 to-pink-600 
+                className="cursor-pointer relative overflow-hidden rounded-2xl bg-gradient-to-r from-purple-600 to-pink-600 
              px-6 py-3 text-lg font-semibold text-white shadow-lg transition-all duration-300 
              hover:scale-105 hover:shadow-purple-500/40 active:scale-95"
               >
@@ -433,7 +433,7 @@ export default function HistoryPage() {
                               <Button
                                 variant="outline"
                                 size="sm"
-                                className="bg-red-500/10 border-red-500/50 text-red-400 hover:bg-red-500/20 hover:border-red-400/70 transition-all duration-300"
+                                className="cursor-pointer bg-red-500/10 border-red-500/50 text-red-400 hover:bg-red-500/20 hover:border-red-400/70 transition-all duration-300"
                                 disabled={deleteLoading === upload.id}
                               >
                                 {deleteLoading === upload.id ? (
@@ -534,7 +534,7 @@ export default function HistoryPage() {
                   variant="outline"
                   onClick={() => handlePageChange(pagination.currentPage - 1)}
                   disabled={!pagination.hasPrevPage || loading}
-                  className="bg-[#2A2A2A] border-purple-500/30 text-white hover:bg-purple-600/20"
+                  className="cursor-pointer bg-[#2A2A2A] border-purple-500/30 text-white hover:bg-purple-600/20"
                 >
                   Previous
                 </Button>
@@ -560,7 +560,7 @@ export default function HistoryPage() {
                           className={
                             pageNumber === pagination.currentPage
                               ? "bg-purple-600 text-white"
-                              : "bg-[#2A2A2A] border-purple-500/30 text-white hover:bg-purple-600/20"
+                              : "bg-[#2A2A2A] border-purple-500/30 text-white hover:bg-purple-600/20 cursor-pointer"
                           }
                         >
                           {pageNumber}
@@ -574,7 +574,7 @@ export default function HistoryPage() {
                   variant="outline"
                   onClick={() => handlePageChange(pagination.currentPage + 1)}
                   disabled={!pagination.hasNextPage || loading}
-                  className="bg-[#2A2A2A] border-purple-500/30 text-white hover:bg-purple-600/20"
+                  className="cursor-pointer bg-[#2A2A2A] border-purple-500/30 text-white hover:bg-purple-600/20"
                 >
                   Next
                 </Button>

@@ -44,7 +44,7 @@ export default function AudioControl() {
 
       <button
         onClick={togglePlay}
-        className="fixed bottom-4 right-4 z-50 rounded-full p-3 bg-black text-white shadow-lg hover:bg-gray-800 transition-all"
+        className="cursor-pointer fixed bottom-4 right-4 z-50 rounded-full p-3 bg-black text-white shadow-lg hover:bg-gray-800 transition-all"
       >
         {isPlaying ? <Pause size={20} /> : <Play size={20} />}
       </button>
