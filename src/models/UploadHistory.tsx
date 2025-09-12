@@ -1,73 +1,98 @@
-import mongoose from "mongoose";
+import { Schema, model, models } from 'mongoose';
 
-const UploadHistorySchema = new mongoose.Schema({
+const UploadHistorySchema = new Schema({
   userId: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: "User",
+    type: Schema.Types.ObjectId,
+    ref: 'User',
     required: true,
+    index: true
   },
   originalFileName: {
     type: String,
-    required: true,
+    required: true
   },
   originalFileSize: {
     type: Number,
-    required: true,
+    required: true
   },
   folderPath: {
     type: String,
-    required: true,
+    required: true
   },
   vocalsFilePath: {
     type: String,
-    required: true,
+    required: false // Not required for effects processing
   },
   instrumentalFilePath: {
     type: String,
-    required: true,
+    required: false // Not required for effects processing
+  },
+  processedAudioUrl: {
+    type: String,
+    required: false // For effects processing results
+  },
+  processingType: {
+    type: String,
+    enum: ['separation', 'effects'],
+    default: 'separation'
   },
   processingStatus: {
     type: String,
-    enum: ["processing", "completed", "failed"],
-    default: "processing",
+    enum: ['processing', 'completed', 'failed'],
+    default: 'processing',
+    index: true
   },
   processingStartTime: {
     type: Date,
-    default: Date.now,
+    default: Date.now
   },
   processingEndTime: {
-    type: Date,
+    type: Date
   },
   processingDuration: {
-    type: Number, // in seconds
+    type: Number // Duration in seconds
   },
   errorMessage: {
-    type: String,
+    type: String
   },
   fileFormat: {
     type: String,
-    required: true,
+    required: true
   },
-  createdAt: {
-    type: Date,
-    default: Date.now,
+  // Audio analysis results
+  audioKey: {
+    type: String // Detected musical key (e.g., "C major", "A minor")
   },
-  updatedAt: {
-    type: Date,
-    default: Date.now,
+  audioBpm: {
+    type: Number // Detected BPM
   },
+  // Effects applied (for effects processing)
+  effectsApplied: {
+    pitch: {
+      type: String // e.g., "+5 semitones", "-2 semitones"
+    },
+    speed: {
+      type: String // e.g., "1.2x speed", "0.8x speed"
+    },
+    reverb: {
+      type: String // e.g., "FFmpeg reverb level 5"
+    }
+  },
+  // Additional processing info
+  processingInfo: {
+    originalDuration: Number,
+    finalDuration: Number,
+    speedFactor: Number,
+    reverbLevel: Number
+  }
+}, {
+  timestamps: true // This adds createdAt and updatedAt automatically
 });
 
-// Index for faster queries
+// Add compound indexes for better query performance
 UploadHistorySchema.index({ userId: 1, createdAt: -1 });
-UploadHistorySchema.index({ processingStatus: 1 });
+UploadHistorySchema.index({ userId: 1, processingStatus: 1 });
+UploadHistorySchema.index({ userId: 1, processingType: 1 });
 
-// Update timestamp on save
-UploadHistorySchema.pre('save', function(next) {
-  this.updatedAt = new Date();
-  next();
-});
-
-const UploadHistory = mongoose.models.UploadHistory || mongoose.model("UploadHistory", UploadHistorySchema);
-
-export default UploadHistory;
+// Export the model
+export default models.UploadHistory || model('UploadHistory', UploadHistorySchema);

@@ -88,21 +88,24 @@ export default function Home() {
     checkAuth();
   }, [router]);
 
-  // Fetch recent uploads for drawer
   useEffect(() => {
-    const fetchRecent = async () => {
-      try {
-        const res = await fetch(`/api/history?limit=100`);
-        const data = await res.json();
-        if (data?.success && Array.isArray(data.uploads)) {
-          setRecentUploads(data.uploads);
-        }
-      } catch (e) {
-        // ignore
+  const fetchRecent = async () => {
+    try {
+      const res = await fetch(`/api/history?limit=100`);
+      const data = await res.json();
+      if (data?.success && Array.isArray(data.uploads)) {
+        // Filter out 'effects' uploads
+        const filtered = data.uploads.filter(
+          (u : any) => u.processingType !== "effects"
+        );
+        setRecentUploads(filtered);
       }
-    };
-    fetchRecent();
-  }, []);
+    } catch (e) {
+      console.log("Failed to fetch recent uploads:", e);
+    }
+  };
+  fetchRecent();
+}, []);
 
   const handleLogout = async () => {
     try {
@@ -345,18 +348,19 @@ export default function Home() {
             />
           </CardContent>
           <CardFooter className="pt-4 flex flex-col items-center gap-4">
-            <button
-              onClick={handleUpload}
-              disabled={loading || !file}
-              className="cursor-pointer relative overflow-hidden rounded-full px-6 py-3 font-bold text-white shadow-lg disabled:opacity-70 bg-purple-600 w-full max-w-xs"
-            >
-              <span className="relative z-10">
-                {loading ? `Processing ${progress}%` : "Upload"}
-              </span>
-              {loading && (
-                <span className="absolute inset-0 bg-gradient-to-b from-purple-500 to-purple-700 animate-pulse opacity-30 blur-md" />
-              )}
-            </button>
+           <button
+  onClick={handleUpload}
+  disabled={loading || !file}
+  className="cursor-pointer relative overflow-hidden rounded-full px-6 py-3 font-bold text-white shadow-lg disabled:opacity-70 bg-gradient-to-r from-purple-600 to-purple-700 hover:from-purple-500 hover:to-purple-800 transition-colors duration-300 w-full max-w-xs"
+>
+  <span className="relative z-10">
+    {loading ? `Processing ${progress}%` : "Upload"}
+  </span>
+  {loading && (
+    <span className="absolute inset-0 bg-gradient-to-b from-purple-500 to-purple-700 animate-pulse opacity-30 blur-md" />
+  )}
+</button>
+
             {loading && (
               <div className="w-full max-w-xs mt-2 bg-gray-700 rounded-full h-2.5 overflow-hidden">
                 <div

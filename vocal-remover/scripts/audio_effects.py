@@ -56,6 +56,7 @@ def apply_effects(file_path, params, output_path):
                 y_pitched = librosa.effects.pitch_shift(y, sr=sr, n_steps=pitch_shift)
                 sf.write(temp_pitch_file, y_pitched, sr)
                 current_file = temp_pitch_file
+                print(f"Pitch shift applied, current file: {current_file}", file=sys.stderr)
             except Exception as e:
                 print(f"Pitch shift failed: {str(e)}", file=sys.stderr)
                 return {"success": False, "error": f"Pitch shift failed: {str(e)}"}
@@ -73,6 +74,7 @@ def apply_effects(file_path, params, output_path):
                 if result.returncode != 0:
                     raise Exception(f"FFmpeg speed change failed: {result.stderr}")
                 current_file = temp_speed_file
+                print(f"Speed change applied, current file: {current_file}", file=sys.stderr)
             except Exception as e:
                 print(f"Speed change failed: {str(e)}", file=sys.stderr)
                 return {"success": False, "error": f"Speed change failed: {str(e)}"}
@@ -81,40 +83,72 @@ def apply_effects(file_path, params, output_path):
         if reverb_level > 0:
             try:
                 print(f"Applying reverb: level {reverb_level}", file=sys.stderr)
+                print(f"Current file for reverb processing: {current_file}", file=sys.stderr)
                 
                 # Path to reverb impulse response file
-                reverb_ir_path = os.path.join(os.getcwd(), "public", "reverbs", "hall.wav")
+                reverb_ir_path = os.path.join(os.getcwd(), "public", "reverbs", "Hall.wav")
+                print(f"Looking for reverb IR at: {reverb_ir_path}", file=sys.stderr)
                 
                 # Check if reverb IR file exists
                 if not os.path.exists(reverb_ir_path):
-                    print(f"Reverb IR file not found at {reverb_ir_path}, creating synthetic reverb", file=sys.stderr)
+                    print(f"Reverb IR file not found, using built-in echo effect", file=sys.stderr)
                     # Use FFmpeg's built-in reverb instead
                     reverb_strength = reverb_level / 10.0  # Convert 0-10 to 0.0-1.0
+                    volume_boost = 1.0 + (reverb_strength * 0.8)  # 1.0 to 1.8x volume
+                    
+                    print(f"Echo settings - strength: {reverb_strength}, volume: {volume_boost:.2f}", file=sys.stderr)
+                    
                     cmd = [
                         'ffmpeg', '-y', '-i', current_file,
-                        '-filter:a', f'aecho=0.8:0.88:60:0.4,volume={1.0 + reverb_strength}',
+                        '-filter:a', f'aecho=0.8:0.88:60:0.4,volume={volume_boost:.2f}',
                         output_path
                     ]
+                    
+                    print(f"Running echo command: {' '.join(cmd)}", file=sys.stderr)
+                    
                 else:
+                    print(f"Using convolution reverb with hall.wav", file=sys.stderr)
                     # Use convolution reverb with impulse response
-                    volume_factor = reverb_level  # Direct mapping: 0-10 scale
+                    # Linear scaling: level 1 = 1.1x volume, level 10 = 2.0x volume
+                    volume_factor = 1.0 + (reverb_level / 10.0)
+                    
+                    print(f"Convolution settings - volume: {volume_factor:.2f}", file=sys.stderr)
+                    
                     cmd = [
                         'ffmpeg', '-y',
                         '-i', current_file,
                         '-i', reverb_ir_path,
-                        '-filter_complex', f'afir,volume={volume_factor}.0',
+                        '-filter_complex', f'afir,volume={volume_factor:.2f}',
                         output_path
                     ]
+                    
+                    print(f"Running convolution command: {' '.join(cmd)}", file=sys.stderr)
                 
+                # Execute the FFmpeg command
+                print("Executing FFmpeg command...", file=sys.stderr)
                 result = subprocess.run(cmd, capture_output=True, text=True)
+                
+                print(f"FFmpeg exit code: {result.returncode}", file=sys.stderr)
+                if result.stdout:
+                    print(f"FFmpeg stdout: {result.stdout}", file=sys.stderr)
+                if result.stderr:
+                    print(f"FFmpeg stderr: {result.stderr}", file=sys.stderr)
+                
                 if result.returncode != 0:
                     raise Exception(f"FFmpeg reverb failed: {result.stderr}")
+                
+                print("Reverb processing completed successfully", file=sys.stderr)
+                
+                # Verify output file was created
+                if not os.path.exists(output_path):
+                    raise Exception("Output file was not created after reverb processing")
                     
             except Exception as e:
-                print(f"Reverb failed: {str(e)}", file=sys.stderr)
+                print(f"Reverb failed with error: {str(e)}", file=sys.stderr)
                 # Fallback: copy current file to output without reverb
                 try:
                     import shutil
+                    print("Falling back to copy without reverb", file=sys.stderr)
                     shutil.copy2(current_file, output_path)
                     print("Applied effects without reverb as fallback", file=sys.stderr)
                 except Exception as copy_error:
@@ -123,7 +157,10 @@ def apply_effects(file_path, params, output_path):
             # No reverb needed, copy current file to output
             try:
                 import shutil
+                print("No reverb requested, copying file", file=sys.stderr)
+                print(f"Copying from: {current_file} to: {output_path}", file=sys.stderr)
                 shutil.copy2(current_file, output_path)
+                print("File copied without reverb", file=sys.stderr)
             except Exception as copy_error:
                 return {"success": False, "error": f"Failed to copy processed file: {str(copy_error)}"}
 
@@ -131,14 +168,23 @@ def apply_effects(file_path, params, output_path):
         for temp_file in [temp_pitch_file, temp_speed_file]:
             try:
                 if os.path.exists(temp_file):
+                    print(f"Cleaning up temp file: {temp_file}", file=sys.stderr)
                     os.remove(temp_file)
             except Exception as e:
                 print(f"Failed to clean up temp file {temp_file}: {e}", file=sys.stderr)
 
+        # Verify final output exists
+        if not os.path.exists(output_path):
+            return {"success": False, "error": "Output file was not created"}
+
+        print(f"Final output file created: {output_path}", file=sys.stderr)
+
         # Analyze final audio for BPM and Key
         try:
+            print("Loading final audio for analysis", file=sys.stderr)
             final_y, final_sr = librosa.load(output_path, sr=None)
         except:
+            print("Using original audio for analysis", file=sys.stderr)
             final_y, final_sr = y, sr
 
         # Detect BPM
@@ -146,7 +192,11 @@ def apply_effects(file_path, params, output_path):
         try:
             print("Analyzing BPM...", file=sys.stderr)
             tempo, _ = librosa.beat.beat_track(y=final_y, sr=final_sr)
-            bpm = float(tempo)
+            # Fix the numpy deprecation warning
+            if hasattr(tempo, 'item'):
+                bpm = tempo.item()
+            else:
+                bpm = float(tempo)
             print(f"Detected BPM: {bpm}", file=sys.stderr)
         except Exception as e:
             print(f"BPM detection failed: {str(e)}", file=sys.stderr)
@@ -159,7 +209,7 @@ def apply_effects(file_path, params, output_path):
             y_harmonic = librosa.effects.harmonic(final_y)
             chroma = librosa.feature.chroma_cqt(y=y_harmonic, sr=final_sr, bins_per_octave=36)
             chroma_mean = chroma.mean(axis=1)
-
+    
             # Apply weighting to emphasize tonic
             chroma_weighted = chroma_mean * np.array([1.0, 0.5, 0.8, 0.5, 0.9, 0.7, 0.5, 1.0, 0.6, 0.8, 0.5, 0.7])
 
@@ -188,9 +238,6 @@ def apply_effects(file_path, params, output_path):
 
         # Get final duration
         final_duration = len(final_y) / final_sr
-
-        if not os.path.exists(output_path):
-            return {"success": False, "error": "Output file was not created"}
 
         return {
             "success": True,

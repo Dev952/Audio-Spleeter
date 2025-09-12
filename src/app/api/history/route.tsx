@@ -59,12 +59,17 @@ export async function GET(req: NextRequest) {
       folderPath: upload.folderPath,
       vocalsFilePath: upload.vocalsFilePath,
       instrumentalFilePath: upload.instrumentalFilePath,
+      processedAudioUrl: upload.processedAudioUrl, // Add processed audio URL
+      effectsApplied: upload.effectsApplied, // Add effects applied
       processingStatus: upload.processingStatus,
+      processingType: upload.processingType || 'separation', // Add processing type
       processingStartTime: upload.processingStartTime?.toISOString(),
       processingEndTime: upload.processingEndTime?.toISOString(),
       processingDuration: upload.processingDuration,
       errorMessage: upload.errorMessage,
       fileFormat: upload.fileFormat,
+      audioKey: upload.audioKey, // Add detected key
+      audioBpm: upload.audioBpm, // Add detected BPM
       createdAt: upload.createdAt?.toISOString(),
       updatedAt: upload.updatedAt?.toISOString(),
       // Helper fields for display
@@ -108,7 +113,7 @@ export async function GET(req: NextRequest) {
   }
 }
 
-// DELETE method for removing specific upload or clearing all
+// DELETE method for removing specific upload only (removed clearAll functionality)
 export async function DELETE(req: NextRequest) {
   try {
     // Get authentication token from cookies
@@ -136,100 +141,60 @@ export async function DELETE(req: NextRequest) {
     const userId = decoded.userId;
     const { searchParams } = new URL(req.url);
     const uploadId = searchParams.get('id');
-    const clearAll = searchParams.get('clearAll') === 'true';
 
-    await dbConnect();
-
-    if (clearAll) {
-      // Clear all uploads for the user
-      const uploads = await UploadHistory.find({ userId });
-      
-      console.log(`🗑️ Starting to clear all uploads for user ${userId}. Found ${uploads.length} uploads.`);
-      
-      // Delete files from filesystem
-      const deletePromises = uploads.map(async (upload) => {
-        try {
-          console.log(`🔍 Processing upload: ${upload.originalFileName}`);
-          console.log(`   Vocals path: ${upload.vocalsFilePath}`);
-          console.log(`   Instrumental path: ${upload.instrumentalFilePath}`);
-          console.log(`   Folder path: ${upload.folderPath}`);
-          
-          if (upload.vocalsFilePath) {
-            await deleteFileIfExists(upload.vocalsFilePath);
-          }
-          if (upload.instrumentalFilePath) {
-            await deleteFileIfExists(upload.instrumentalFilePath);
-          }
-          // Delete folder if it exists and is empty
-          if (upload.folderPath) {
-            await deleteFolderIfEmpty(upload.folderPath);
-          }
-        } catch (error) {
-          console.error(`❌ Error deleting files for upload ${upload._id}:`, error);
-        }
-      });
-
-      await Promise.all(deletePromises);
-
-      // Delete all records from database
-      const result = await UploadHistory.deleteMany({ userId });
-      
-      console.log(`✅ Successfully cleared ${result.deletedCount} uploads from database`);
-
-      return NextResponse.json({
-        success: true,
-        message: `Successfully cleared ${result.deletedCount} uploads`,
-        deletedCount: result.deletedCount
-      });
-
-    } else if (uploadId) {
-      // Delete specific upload
-      const upload = await UploadHistory.findOne({ _id: uploadId, userId });
-
-      if (!upload) {
-        return NextResponse.json(
-          { success: false, error: 'Upload not found' },
-          { status: 404 }
-        );
-      }
-
-      console.log(`🗑️ Deleting specific upload: ${upload.originalFileName}`);
-      console.log(`   Vocals path: ${upload.vocalsFilePath}`);
-      console.log(`   Instrumental path: ${upload.instrumentalFilePath}`);
-      console.log(`   Folder path: ${upload.folderPath}`);
-
-      // Delete files from filesystem
-      try {
-        if (upload.vocalsFilePath) {
-          await deleteFileIfExists(upload.vocalsFilePath);
-        }
-        if (upload.instrumentalFilePath) {
-          await deleteFileIfExists(upload.instrumentalFilePath);
-        }
-        // Delete folder if it exists and is empty
-        if (upload.folderPath) {
-          await deleteFolderIfEmpty(upload.folderPath);
-        }
-      } catch (error) {
-        console.error(`❌ Error deleting files for upload ${uploadId}:`, error);
-      }
-
-      // Delete record from database
-      await UploadHistory.deleteOne({ _id: uploadId, userId });
-      
-      console.log(`✅ Successfully deleted upload from database`);
-
-      return NextResponse.json({
-        success: true,
-        message: 'Upload deleted successfully'
-      });
-
-    } else {
+    if (!uploadId) {
       return NextResponse.json(
-        { success: false, error: 'Either uploadId or clearAll parameter is required' },
+        { success: false, error: 'Upload ID is required' },
         { status: 400 }
       );
     }
+
+    await dbConnect();
+
+    // Delete specific upload
+    const upload = await UploadHistory.findOne({ _id: uploadId, userId });
+
+    if (!upload) {
+      return NextResponse.json(
+        { success: false, error: 'Upload not found' },
+        { status: 404 }
+      );
+    }
+
+    console.log(`🗑️ Deleting specific upload: ${upload.originalFileName}`);
+    console.log(`   Vocals path: ${upload.vocalsFilePath}`);
+    console.log(`   Instrumental path: ${upload.instrumentalFilePath}`);
+    console.log(`   Processed audio path: ${upload.processedAudioUrl}`);
+    console.log(`   Folder path: ${upload.folderPath}`);
+
+    // Delete files from filesystem
+    try {
+      if (upload.vocalsFilePath) {
+        await deleteFileIfExists(upload.vocalsFilePath);
+      }
+      if (upload.instrumentalFilePath) {
+        await deleteFileIfExists(upload.instrumentalFilePath);
+      }
+      if (upload.processedAudioUrl) {
+        await deleteFileIfExists(upload.processedAudioUrl);
+      }
+      // Delete folder if it exists and is empty
+      if (upload.folderPath) {
+        await deleteFolderIfEmpty(upload.folderPath);
+      }
+    } catch (error) {
+      console.error(`❌ Error deleting files for upload ${uploadId}:`, error);
+    }
+
+    // Delete record from database
+    await UploadHistory.deleteOne({ _id: uploadId, userId });
+    
+    console.log(`✅ Successfully deleted upload from database`);
+
+    return NextResponse.json({
+      success: true,
+      message: 'Upload deleted successfully'
+    });
 
   } catch (error: any) {
     console.error('Delete API error:', error);

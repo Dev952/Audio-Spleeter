@@ -3,6 +3,10 @@ import { spawn } from "child_process";
 import path from "path";
 import fs from "fs";
 import { v4 as uuidv4 } from "uuid";
+import jwt from 'jsonwebtoken';
+import { cookies } from 'next/headers';
+import dbConnect from '@/lib/mongodb';
+import UploadHistory from '@/models/UploadHistory';
 
 interface ProcessingParams {
   pitch: number;
@@ -14,6 +18,20 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
   let tempInputPath: string | null = null;
 
   try {
+    // Get authentication token from cookies (optional for effects)
+    let userId: string | null = null;
+    try {
+      const cookieStore = await cookies();
+      const token = cookieStore.get('auth-token')?.value;
+      if (token) {
+        const decoded = jwt.verify(token, process.env.JWT_SECRET!) as any;
+        userId = decoded.userId;
+      }
+    } catch (error) {
+      // Continue without authentication for standalone effects
+      console.log("No authentication found, proceeding without database logging");
+    }
+
     let fullAudioPath: string = "";
     let pitch: number = 0;
     let speed: number = 1.0;
@@ -49,7 +67,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       originalName = file.name;
 
       const buffer = Buffer.from(await file.arrayBuffer());
-      const uploadDir = path.join(process.cwd(), "public", "uploads", uploadId);
+      const uploadDir = path.join(process.cwd(), "public", "uploads",  "effects", uploadId);
       if (!fs.existsSync(uploadDir)) {
         fs.mkdirSync(uploadDir, { recursive: true });
       }
@@ -99,6 +117,12 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
         error: "Unsupported content type. Use multipart/form-data or application/json."
       }, { status: 400 });
     }
+    // After you resolve fullAudioPath (either from uploaded file or JSON input):
+const relativeInputPath = "/" + path.relative(
+  path.join(process.cwd(), "public"),
+  fullAudioPath
+).replace(/\\/g, "/");
+
 
     // Validate parameters
     if (speed < 0.1 || speed > 5.0) {
@@ -164,6 +188,44 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     console.log("Input file:", fullAudioPath);
     console.log("Output file:", outputPath);
 
+    // Track processing start time
+    const processingStartTime = new Date();
+    let historyRecord = null;
+
+    // Create database record if user is authenticated
+    if (userId) {
+      try {
+        await dbConnect();
+
+                
+historyRecord = new UploadHistory({
+  userId,
+  originalFileName: originalName,
+  originalFileSize: fs.statSync(fullAudioPath).size,
+  folderPath: `/uploads/${uploadId}`,
+  originalFilePath: relativeInputPath,   // ✅ now correct
+  processingType: 'effects',
+  processingStatus: 'processing',
+  processingStartTime,
+  fileFormat: path.extname(originalName).toLowerCase(),
+  processedAudioUrl: null,
+  effectsApplied: {
+    pitch: pitch !== 0 ? `${pitch > 0 ? '+' : ''}${pitch} semitones` : null,
+    speed: speed !== 1.0 ? `${speed}x speed` : null,
+    reverb: reverb > 0 ? `FFmpeg reverb level ${reverb}` : null
+  }
+});
+
+
+
+        await historyRecord.save();
+        console.log("Created effects processing record in database");
+      } catch (dbError) {
+        console.error("Database error:", dbError);
+        // Continue processing even if database fails
+      }
+    }
+
     // Run Python processing script with reverb parameter
     const pythonProcess = spawn("python", [
       scriptPath,
@@ -209,6 +271,10 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
         } catch (cleanupError) {
           console.log("Cleanup error:", cleanupError);
         }
+        
+          
+        const processingEndTime = new Date();
+        const processingDuration = Math.round((processingEndTime.getTime() - processingStartTime.getTime()) / 1000);
 
         console.log(`Python process exited with code: ${code}`);
         console.log("Final stdout:", stdoutData);
@@ -216,6 +282,21 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
 
         if (code !== 0) {
           const errorMsg = stderrData || `Python process exited with code ${code}`;
+          
+          // Update database record if it exists
+          if (historyRecord) {
+            try {
+              await UploadHistory.findByIdAndUpdate(historyRecord._id, {
+                processingStatus: 'failed',
+                processingEndTime,
+                processingDuration,
+                errorMessage: errorMsg
+              });
+            } catch (dbError) {
+              console.error("Database update error:", dbError);
+            }
+          }
+
           resolve(NextResponse.json(
             { success: false, error: `FFmpeg processing failed: ${errorMsg}` },
             { status: 500 }
@@ -224,6 +305,20 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
         }
 
         if (!fs.existsSync(outputPath)) {
+          // Update database record if it exists
+          if (historyRecord) {
+            try {
+              await UploadHistory.findByIdAndUpdate(historyRecord._id, {
+                processingStatus: 'failed',
+                processingEndTime,
+                processingDuration,
+                errorMessage: 'Output file was not created'
+              });
+            } catch (dbError) {
+              console.error("Database update error:", dbError);
+            }
+          }
+
           resolve(NextResponse.json(
             { success: false, error: "Output file was not created. Check server logs for details." },
             { status: 500 }
@@ -244,7 +339,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
             if (typeof parsed.key === "string") {
               detectedKey = parsed.key;
             }
-            if (typeof parsed.bpm === "number" && isFinite(parsed.bmp)) {
+            if (typeof parsed.bpm === "number" && isFinite(parsed.bpm)) {
               detectedBpm = Math.round(parsed.bpm);
             }
             if (parsed.original_duration && parsed.final_duration) {
@@ -283,13 +378,31 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
           console.log("Could not get file size:", e);
         }
 
+        // Update database record if it exists
+        if (historyRecord) {
+          try {
+            await UploadHistory.findByIdAndUpdate(historyRecord._id, {
+              processingStatus: 'completed',
+              processingEndTime,
+              processingDuration,
+              processedAudioUrl: relativePath, // Store the processed audio URL
+              audioKey: detectedKey !== "Not detected" ? detectedKey : null,
+              audioBpm: detectedBpm,
+              processingInfo
+            });
+            console.log("Updated effects processing record in database");
+          } catch (dbError) {
+            console.error("Database update error:", dbError);
+          }
+        }
+
         const response = {
           success: true,
           audioUrl: relativePath,
           originalName: outputFileName,
           fileSize,
           key: detectedKey,
-          bmp: detectedBpm,
+          bpm: detectedBpm,
           processingInfo,
           effectsApplied: {
             pitch: pitch !== 0 ? `${pitch > 0 ? '+' : ''}${pitch} semitones` : null,
@@ -297,7 +410,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
             reverb: reverb > 0 ? `FFmpeg reverb level ${reverb}` : null
           },
           processingMethod: "FFmpeg + librosa",
-          processingTime: "~1 minute", // Approximate
+          processingTime: `${processingDuration}s`,
           metadata: {
             inputFile: originalName,
             outputFormat: "WAV",
@@ -311,9 +424,26 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
         resolve(NextResponse.json(response));
       });
 
-      pythonProcess.on("error", (error: Error) => {
+      pythonProcess.on("error", async (error: Error) => {
         clearTimeout(timeoutId);
         console.error("Python process error:", error);
+
+        // Update database record if it exists
+        if (historyRecord) {
+          try {
+            const processingEndTime = new Date();
+            const processingDuration = Math.round((processingEndTime.getTime() - processingStartTime.getTime()) / 1000);
+            
+            await UploadHistory.findByIdAndUpdate(historyRecord._id, {
+              processingStatus: 'failed',
+              processingEndTime,
+              processingDuration,
+              errorMessage: error.message
+            });
+          } catch (dbError) {
+            console.error("Database update error:", dbError);
+          }
+        }
 
         // Cleanup on error
         try {
