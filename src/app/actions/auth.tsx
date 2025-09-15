@@ -1,14 +1,14 @@
-'use server'
+"use server";
 
 import jwt from "jsonwebtoken";
 import bcrypt from "bcryptjs";
 import dbConnect from "@/lib/mongodb";
 import User from "@/models/User";
 import UploadHistory from "@/models/UploadHistory";
-import PasswordReset from "@/models/PasswordReset"; 
-import { cookies } from 'next/headers';
-import { redirect } from 'next/navigation';
-import nodemailer from 'nodemailer';
+import PasswordReset from "@/models/PasswordReset";
+import { cookies } from "next/headers";
+import { redirect } from "next/navigation";
+import nodemailer from "nodemailer";
 
 // Types for better type safety
 interface LoginResult {
@@ -61,16 +61,13 @@ interface VerifyCodeResult {
 
 // Email configuration - Alternative services
 const createTransporter = () => {
-  
   return nodemailer.createTransport({
-    service: 'gmail',
+    service: "gmail",
     auth: {
       user: process.env.EMAIL_USER,
-      pass: process.env.EMAIL_PASSWORD,  
+      pass: process.env.EMAIL_PASSWORD,
     },
   });
-
- 
 };
 
 // Generate 6-digit verification code
@@ -81,11 +78,15 @@ const generateVerificationCode = (): string => {
 // 1. Login Action
 export async function loginUser(formData: FormData): Promise<LoginResult> {
   try {
-    const email = formData.get('email') as string;
-    const password = formData.get('password') as string;
+    const email = formData.get("email") as string;
+    const password = formData.get("password") as string;
 
     if (!email || !password) {
-      return { success: false, error: "Email and password are required", message: "" };
+      return {
+        success: false,
+        error: "Email and password are required",
+        message: "",
+      };
     }
 
     const emailLower = email.toLowerCase();
@@ -96,7 +97,8 @@ export async function loginUser(formData: FormData): Promise<LoginResult> {
       return { success: false, error: "User not found", message: "" };
     }
 
-    const valid = user.password && (await bcrypt.compare(password, user.password));
+    const valid =
+      user.password && (await bcrypt.compare(password, user.password));
     if (!valid) {
       return { success: false, error: "Invalid password", message: "" };
     }
@@ -105,19 +107,17 @@ export async function loginUser(formData: FormData): Promise<LoginResult> {
       throw new Error("JWT_SECRET is not set in .env.local");
     }
 
-    const token = jwt.sign(
-      { userId: user._id },
-      process.env.JWT_SECRET,
-      { expiresIn: "1d" }
-    );
+    const token = jwt.sign({ userId: user._id }, process.env.JWT_SECRET, {
+      expiresIn: "1d",
+    });
 
     // Set httpOnly cookie - AWAIT cookies()
     const cookieStore = await cookies();
-    cookieStore.set('auth-token', token, {
+    cookieStore.set("auth-token", token, {
       httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'strict',
-      maxAge: 24 * 60 * 60 // 1 day
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "strict",
+      maxAge: 24 * 60 * 60, // 1 day
     });
 
     // Serialize user data properly - convert ObjectId to string
@@ -130,9 +130,8 @@ export async function loginUser(formData: FormData): Promise<LoginResult> {
     return {
       success: true,
       message: "Login successful",
-      user: userResponse
+      user: userResponse,
     };
-
   } catch (err: any) {
     console.error("Login error:", err);
     return { success: false, error: err.message, message: "" };
@@ -140,18 +139,20 @@ export async function loginUser(formData: FormData): Promise<LoginResult> {
 }
 
 // 2. Register Action
-export async function registerUser(formData: FormData): Promise<RegisterResult> {
+export async function registerUser(
+  formData: FormData
+): Promise<RegisterResult> {
   try {
-    const name = formData.get('name') as string;
-    const email = formData.get('email') as string;
-    const password = formData.get('password') as string;
+    const name = formData.get("name") as string;
+    const email = formData.get("email") as string;
+    const password = formData.get("password") as string;
 
     // Input validation
     if (!name || !email || !password) {
       return {
         success: false,
         error: "Name, email, and password are required",
-        message: ""
+        message: "",
       };
     }
 
@@ -160,7 +161,7 @@ export async function registerUser(formData: FormData): Promise<RegisterResult> 
       return {
         success: false,
         error: "Password must be at least 6 characters long",
-        message: ""
+        message: "",
       };
     }
 
@@ -170,7 +171,7 @@ export async function registerUser(formData: FormData): Promise<RegisterResult> 
       return {
         success: false,
         error: "Please enter a valid email address",
-        message: ""
+        message: "",
       };
     }
 
@@ -184,7 +185,7 @@ export async function registerUser(formData: FormData): Promise<RegisterResult> 
       return {
         success: false,
         error: "User already exists",
-        message: ""
+        message: "",
       };
     }
 
@@ -198,22 +199,20 @@ export async function registerUser(formData: FormData): Promise<RegisterResult> 
       password: hashedPassword,
     });
 
-  
     // Serialize user data properly - convert to plain object
     const userWithoutPassword = {
       id: user._id.toString(),
       name: user.name,
       email: user.email,
       createdAt: user.createdAt?.toISOString(),
-      updatedAt: user.updatedAt?.toISOString()
+      updatedAt: user.updatedAt?.toISOString(),
     };
 
     return {
       success: true,
       message: "User created successfully",
-      user: userWithoutPassword
+      user: userWithoutPassword,
     };
-
   } catch (err: any) {
     console.error("Registration error:", err);
 
@@ -222,14 +221,14 @@ export async function registerUser(formData: FormData): Promise<RegisterResult> 
       return {
         success: false,
         error: "User already exists",
-        message: ""
+        message: "",
       };
     }
 
     return {
       success: false,
       error: "Internal server error",
-      message: ""
+      message: "",
     };
   }
 }
@@ -238,12 +237,12 @@ export async function registerUser(formData: FormData): Promise<RegisterResult> 
 export async function getCurrentUser(): Promise<UserResult> {
   try {
     const cookieStore = await cookies();
-    const token = cookieStore.get('auth-token')?.value;
+    const token = cookieStore.get("auth-token")?.value;
 
     if (!token) {
       return {
         success: false,
-        error: "No token provided"
+        error: "No token provided",
       };
     }
 
@@ -254,7 +253,7 @@ export async function getCurrentUser(): Promise<UserResult> {
     if (!user) {
       return {
         success: false,
-        error: "User not found"
+        error: "User not found",
       };
     }
 
@@ -264,19 +263,18 @@ export async function getCurrentUser(): Promise<UserResult> {
       name: user.name,
       email: user.email,
       createdAt: user.createdAt?.toISOString(),
-      updatedAt: user.updatedAt?.toISOString()
+      updatedAt: user.updatedAt?.toISOString(),
     };
 
     return {
       success: true,
-      user: serializedUser
+      user: serializedUser,
     };
-
   } catch (err: any) {
     console.error("Get current user error:", err);
     return {
       success: false,
-      error: "Invalid token"
+      error: "Invalid token",
     };
   }
 }
@@ -286,12 +284,12 @@ export async function getUserByEmail(formData: FormData): Promise<UserResult> {
   try {
     await dbConnect();
 
-    const email = formData.get('email') as string;
+    const email = formData.get("email") as string;
 
     if (!email) {
       return {
         success: false,
-        error: "Email is required"
+        error: "Email is required",
       };
     }
 
@@ -301,7 +299,7 @@ export async function getUserByEmail(formData: FormData): Promise<UserResult> {
     if (!user) {
       return {
         success: false,
-        error: "User not found"
+        error: "User not found",
       };
     }
 
@@ -311,19 +309,18 @@ export async function getUserByEmail(formData: FormData): Promise<UserResult> {
       name: user.name,
       email: user.email,
       createdAt: user.createdAt?.toISOString(),
-      updatedAt: user.updatedAt?.toISOString()
+      updatedAt: user.updatedAt?.toISOString(),
     };
 
     return {
       success: true,
-      user: serializedUser
+      user: serializedUser,
     };
-
   } catch (err: any) {
     console.error("Get user error:", err);
     return {
       success: false,
-      error: "Internal server error"
+      error: "Internal server error",
     };
   }
 }
@@ -331,20 +328,22 @@ export async function getUserByEmail(formData: FormData): Promise<UserResult> {
 // 6. Logout Action
 export async function logoutUser() {
   const cookieStore = await cookies();
-  cookieStore.delete('auth-token');
-  redirect('/login'); // Redirect to login page after logout
+  cookieStore.delete("auth-token");
+  redirect("/login"); // Redirect to login page after logout
 }
 
 // 7. Forgot Password - Send Verification Code
-export async function forgotPassword(formData: FormData): Promise<ForgotPasswordResult> {
+export async function forgotPassword(
+  formData: FormData
+): Promise<ForgotPasswordResult> {
   try {
-    const email = formData.get('email') as string;
+    const email = formData.get("email") as string;
 
     if (!email) {
       return {
         success: false,
         error: "Email is required",
-        message: ""
+        message: "",
       };
     }
 
@@ -357,7 +356,7 @@ export async function forgotPassword(formData: FormData): Promise<ForgotPassword
       return {
         success: false,
         error: "User not found with this email",
-        message: ""
+        message: "",
       };
     }
 
@@ -373,16 +372,16 @@ export async function forgotPassword(formData: FormData): Promise<ForgotPassword
       userId: user._id,
       email: emailLower,
       code: verificationCode,
-      expiresAt: expiresAt
+      expiresAt: expiresAt,
     });
 
     // Send email with verification code
     const transporter = createTransporter();
-    
+
     const mailOptions = {
       from: process.env.EMAIL_USER,
       to: emailLower,
-      subject: 'Password Reset Verification Code',
+      subject: "Password Reset Verification Code",
       html: `
         <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; background-color: #f8f9fa;">
           <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 30px; text-align: center; border-radius: 10px 10px 0 0;">
@@ -419,37 +418,38 @@ export async function forgotPassword(formData: FormData): Promise<ForgotPassword
             </p>
           </div>
         </div>
-      `
+      `,
     };
 
     await transporter.sendMail(mailOptions);
 
     return {
       success: true,
-      message: "Verification code sent to your email"
+      message: "Verification code sent to your email",
     };
-
   } catch (err: any) {
     console.error("Forgot password error:", err);
     return {
       success: false,
       error: "Failed to send verification code. Please try again.",
-      message: ""
+      message: "",
     };
   }
 }
 
 // 8. Verify Reset Code
-export async function verifyResetCode(formData: FormData): Promise<VerifyCodeResult> {
+export async function verifyResetCode(
+  formData: FormData
+): Promise<VerifyCodeResult> {
   try {
-    const email = formData.get('email') as string;
-    const code = formData.get('code') as string;
+    const email = formData.get("email") as string;
+    const code = formData.get("code") as string;
 
     if (!email || !code) {
       return {
         success: false,
         error: "Email and verification code are required",
-        message: ""
+        message: "",
       };
     }
 
@@ -460,44 +460,45 @@ export async function verifyResetCode(formData: FormData): Promise<VerifyCodeRes
     const passwordReset = await PasswordReset.findOne({
       email: emailLower,
       code: code,
-      expiresAt: { $gt: new Date() }
+      expiresAt: { $gt: new Date() },
     });
 
     if (!passwordReset) {
       return {
         success: false,
         error: "Invalid or expired verification code",
-        message: ""
+        message: "",
       };
     }
 
     return {
       success: true,
-      message: "Verification code is valid"
+      message: "Verification code is valid",
     };
-
   } catch (err: any) {
     console.error("Verify code error:", err);
     return {
       success: false,
       error: "Failed to verify code",
-      message: ""
+      message: "",
     };
   }
 }
 
 // 9. Reset Password with Verification Code
-export async function resetPassword(formData: FormData): Promise<ResetPasswordResult> {
+export async function resetPassword(
+  formData: FormData
+): Promise<ResetPasswordResult> {
   try {
-    const email = formData.get('email') as string;
-    const code = formData.get('code') as string;
-    const newPassword = formData.get('newPassword') as string;
+    const email = formData.get("email") as string;
+    const code = formData.get("code") as string;
+    const newPassword = formData.get("newPassword") as string;
 
     if (!email || !code || !newPassword) {
       return {
         success: false,
         error: "Email, verification code, and new password are required",
-        message: ""
+        message: "",
       };
     }
 
@@ -506,7 +507,7 @@ export async function resetPassword(formData: FormData): Promise<ResetPasswordRe
       return {
         success: false,
         error: "Password must be at least 6 characters long",
-        message: ""
+        message: "",
       };
     }
 
@@ -517,14 +518,14 @@ export async function resetPassword(formData: FormData): Promise<ResetPasswordRe
     const passwordReset = await PasswordReset.findOne({
       email: emailLower,
       code: code,
-      expiresAt: { $gt: new Date() }
+      expiresAt: { $gt: new Date() },
     });
 
     if (!passwordReset) {
       return {
         success: false,
         error: "Invalid or expired verification code",
-        message: ""
+        message: "",
       };
     }
 
@@ -534,7 +535,7 @@ export async function resetPassword(formData: FormData): Promise<ResetPasswordRe
       return {
         success: false,
         error: "User not found",
-        message: ""
+        message: "",
       };
     }
 
@@ -544,7 +545,7 @@ export async function resetPassword(formData: FormData): Promise<ResetPasswordRe
     // Update user's password
     await User.findByIdAndUpdate(user._id, {
       password: hashedPassword,
-      updatedAt: new Date()
+      updatedAt: new Date(),
     });
 
     // Delete the used password reset token
@@ -552,15 +553,14 @@ export async function resetPassword(formData: FormData): Promise<ResetPasswordRe
 
     return {
       success: true,
-      message: "Password reset successfully"
+      message: "Password reset successfully",
     };
-
   } catch (err: any) {
     console.error("Reset password error:", err);
     return {
       success: false,
       error: "Failed to reset password",
-      message: ""
+      message: "",
     };
   }
 }
@@ -573,12 +573,12 @@ export async function getUploadHistory(): Promise<{
 }> {
   try {
     const cookieStore = await cookies();
-    const token = cookieStore.get('auth-token')?.value;
+    const token = cookieStore.get("auth-token")?.value;
 
     if (!token) {
       return {
         success: false,
-        error: "No token provided"
+        error: "No token provided",
       };
     }
 
@@ -591,7 +591,7 @@ export async function getUploadHistory(): Promise<{
       .lean();
 
     // Format the history with proper timestamps and serialize properly
-    const formattedUploads = uploads.map(upload => ({
+    const formattedUploads = uploads.map((upload) => ({
       id: String(upload._id),
       originalFileName: upload.originalFileName,
       originalFileSize: upload.originalFileSize,
@@ -599,33 +599,42 @@ export async function getUploadHistory(): Promise<{
       vocalsFilePath: upload.vocalsFilePath,
       instrumentalFilePath: upload.instrumentalFilePath,
       processingStatus: upload.processingStatus,
-      processingStartTime: upload.processingStartTime ? new Date(upload.processingStartTime).toISOString() : null,
-      processingEndTime: upload.processingEndTime ? new Date(upload.processingEndTime).toISOString() : null,
+      processingStartTime: upload.processingStartTime
+        ? new Date(upload.processingStartTime).toISOString()
+        : null,
+      processingEndTime: upload.processingEndTime
+        ? new Date(upload.processingEndTime).toISOString()
+        : null,
       processingDuration: upload.processingDuration,
       errorMessage: upload.errorMessage,
       fileFormat: upload.fileFormat,
-      createdAt: upload.createdAt ? new Date(upload.createdAt).toISOString() : null,
-      updatedAt: upload.updatedAt ? new Date(upload.updatedAt).toISOString() : null,
-      formattedDate: upload.createdAt ? new Date(upload.createdAt).toLocaleString('en-US', {
-        year: 'numeric',
-        month: 'short',
-        day: 'numeric',
-        hour: '2-digit',
-        minute: '2-digit',
-        hour12: true
-      }) : null
+      createdAt: upload.createdAt
+        ? new Date(upload.createdAt).toISOString()
+        : null,
+      updatedAt: upload.updatedAt
+        ? new Date(upload.updatedAt).toISOString()
+        : null,
+      formattedDate: upload.createdAt
+        ? new Date(upload.createdAt).toLocaleString("en-US", {
+            year: "numeric",
+            month: "short",
+            day: "numeric",
+            hour: "2-digit",
+            minute: "2-digit",
+            hour12: true,
+          })
+        : null,
     }));
 
     return {
       success: true,
-      uploads: formattedUploads
+      uploads: formattedUploads,
     };
-
   } catch (error: any) {
     console.error("Upload history fetch error:", error);
     return {
       success: false,
-      error: "Invalid token"
+      error: "Invalid token",
     };
   }
 }

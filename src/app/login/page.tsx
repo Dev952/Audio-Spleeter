@@ -7,23 +7,29 @@ import Link from "next/link";
 import { toast } from "sonner";
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { loginUser, getCurrentUser, forgotPassword, verifyResetCode, resetPassword } from "@/app/actions/auth";
+import {
+  loginUser,
+  getCurrentUser,
+  forgotPassword,
+  verifyResetCode,
+  resetPassword,
+} from "@/app/actions/auth";
 
-type Step = 'login' | 'forgot-email' | 'verify-code' | 'reset-password';
+type Step = "login" | "forgot-email" | "verify-code" | "reset-password";
 
 export default function LoginPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [checkingAuth, setCheckingAuth] = useState(true);
-  const [currentStep, setCurrentStep] = useState<Step>('login');
-    
+  const [currentStep, setCurrentStep] = useState<Step>("login");
+
   // Forgot password states
   const [forgotEmail, setForgotEmail] = useState("");
   const [verificationCode, setVerificationCode] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
-  
+
   const router = useRouter();
 
   // Redirect if already logged in
@@ -51,8 +57,8 @@ export default function LoginPage() {
 
     try {
       const formData = new FormData();
-      formData.append('email', email);
-      formData.append('password', password);
+      formData.append("email", email);
+      formData.append("password", password);
 
       const result = await loginUser(formData);
 
@@ -61,9 +67,8 @@ export default function LoginPage() {
         return;
       }
 
-    toast.success("Logged in successfully!");
+      toast.success("Logged in successfully!");
       router.push("/home");
-
     } catch (error) {
       toast.error("Connection error. Please try again.");
       console.error("Login error:", error);
@@ -78,7 +83,7 @@ export default function LoginPage() {
 
     try {
       const formData = new FormData();
-      formData.append('email', forgotEmail);
+      formData.append("email", forgotEmail);
 
       const result = await forgotPassword(formData);
 
@@ -88,8 +93,7 @@ export default function LoginPage() {
       }
 
       toast.success("Verification code sent to your email!");
-      setCurrentStep('verify-code');
-
+      setCurrentStep("verify-code");
     } catch (error) {
       toast.error("Connection error. Please try again.");
       console.error("Forgot password error:", error);
@@ -104,8 +108,8 @@ export default function LoginPage() {
 
     try {
       const formData = new FormData();
-      formData.append('email', forgotEmail);
-      formData.append('code', verificationCode);
+      formData.append("email", forgotEmail);
+      formData.append("code", verificationCode);
 
       const result = await verifyResetCode(formData);
 
@@ -115,8 +119,7 @@ export default function LoginPage() {
       }
 
       toast.success("Code verified successfully!");
-      setCurrentStep('reset-password');
-
+      setCurrentStep("reset-password");
     } catch (error) {
       toast.error("Connection error. Please try again.");
       console.error("Verify code error:", error);
@@ -127,7 +130,7 @@ export default function LoginPage() {
 
   const handleResetPassword = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     if (newPassword !== confirmPassword) {
       toast.error("Passwords don't match");
       return;
@@ -142,9 +145,9 @@ export default function LoginPage() {
 
     try {
       const formData = new FormData();
-      formData.append('email', forgotEmail);
-      formData.append('code', verificationCode);
-      formData.append('newPassword', newPassword);
+      formData.append("email", forgotEmail);
+      formData.append("code", verificationCode);
+      formData.append("newPassword", newPassword);
 
       const result = await resetPassword(formData);
 
@@ -154,14 +157,13 @@ export default function LoginPage() {
       }
 
       toast.success("Password reset successfully! You can now login.");
-      
+
       // Reset states and go back to login
-      setCurrentStep('login');
+      setCurrentStep("login");
       setForgotEmail("");
       setVerificationCode("");
       setNewPassword("");
       setConfirmPassword("");
-
     } catch (error) {
       toast.error("Connection error. Please try again.");
       console.error("Reset password error:", error);
@@ -171,7 +173,7 @@ export default function LoginPage() {
   };
 
   const resetToLogin = () => {
-    setCurrentStep('login');
+    setCurrentStep("login");
     setForgotEmail("");
     setVerificationCode("");
     setNewPassword("");
@@ -193,9 +195,8 @@ export default function LoginPage() {
   return (
     <div className="flex items-center justify-center min-h-screen w-full text-white bg-gradient-to-br from-black via-purple-900 to-purple-800">
       <div className="bg-[#1F1F1F] rounded-2xl shadow-lg p-8 w-full max-w-md border border-purple-700">
-        
         {/* LOGIN FORM */}
-        {currentStep === 'login' && (
+        {currentStep === "login" && (
           <>
             <h1 className="text-2xl font-bold mb-6 text-center text-purple-300">
               Log In
@@ -217,7 +218,10 @@ export default function LoginPage() {
                 />
               </div>
               <div>
-                <Label htmlFor="password" className="text-purple-300 mb-2 block">
+                <Label
+                  htmlFor="password"
+                  className="text-purple-300 mb-2 block"
+                >
                   Password
                 </Label>
                 <Input
@@ -244,7 +248,7 @@ export default function LoginPage() {
             <div className="mt-4 text-center">
               <button
                 type="button"
-                onClick={() => setCurrentStep('forgot-email')}
+                onClick={() => setCurrentStep("forgot-email")}
                 className="cursor-pointer text-sm text-purple-400 hover:underline hover:text-purple-300 transition-colors"
               >
                 Forgot your password?
@@ -261,7 +265,7 @@ export default function LoginPage() {
         )}
 
         {/* FORGOT PASSWORD - EMAIL STEP */}
-        {currentStep === 'forgot-email' && (
+        {currentStep === "forgot-email" && (
           <>
             <div className="flex items-center mb-6">
               <button
@@ -276,12 +280,16 @@ export default function LoginPage() {
             </div>
 
             <p className="text-sm text-gray-300 mb-6">
-              Enter your email address and we'll send you a verification code to reset your password.
+              Enter your email address and we'll send you a verification code to
+              reset your password.
             </p>
 
             <form className="space-y-4" onSubmit={handleForgotPassword}>
               <div>
-                <Label htmlFor="forgot-email" className="text-purple-300 mb-2 block">
+                <Label
+                  htmlFor="forgot-email"
+                  className="text-purple-300 mb-2 block"
+                >
                   Email Address
                 </Label>
                 <Input
@@ -307,11 +315,11 @@ export default function LoginPage() {
         )}
 
         {/* VERIFY CODE STEP */}
-        {currentStep === 'verify-code' && (
+        {currentStep === "verify-code" && (
           <>
             <div className="flex items-center mb-6">
               <button
-                onClick={() => setCurrentStep('forgot-email')}
+                onClick={() => setCurrentStep("forgot-email")}
                 className="cursor-pointer text-purple-400 hover:text-purple-300 mr-3 text-xl transition-colors"
               >
                 ←
@@ -328,7 +336,10 @@ export default function LoginPage() {
 
             <form className="space-y-4" onSubmit={handleVerifyCode}>
               <div>
-                <Label htmlFor="verification-code" className="text-purple-300 mb-2 block">
+                <Label
+                  htmlFor="verification-code"
+                  className="text-purple-300 mb-2 block"
+                >
                   Verification Code
                 </Label>
                 <Input
@@ -336,7 +347,11 @@ export default function LoginPage() {
                   type="text"
                   placeholder="123456"
                   value={verificationCode}
-                  onChange={(e) => setVerificationCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                  onChange={(e) =>
+                    setVerificationCode(
+                      e.target.value.replace(/\D/g, "").slice(0, 6)
+                    )
+                  }
                   className="text-white placeholder-gray-300 text-center text-2xl tracking-widest font-mono"
                   maxLength={6}
                   required
@@ -366,11 +381,11 @@ export default function LoginPage() {
         )}
 
         {/* RESET PASSWORD STEP */}
-        {currentStep === 'reset-password' && (
+        {currentStep === "reset-password" && (
           <>
             <div className="flex items-center mb-6">
               <button
-                onClick={() => setCurrentStep('verify-code')}
+                onClick={() => setCurrentStep("verify-code")}
                 className="cursor-pointer text-purple-400 hover:text-purple-300 mr-3 text-xl transition-colors"
               >
                 ←
@@ -386,7 +401,10 @@ export default function LoginPage() {
 
             <form className="space-y-4" onSubmit={handleResetPassword}>
               <div>
-                <Label htmlFor="new-password" className="text-purple-300 mb-2 block">
+                <Label
+                  htmlFor="new-password"
+                  className="text-purple-300 mb-2 block"
+                >
                   New Password
                 </Label>
                 <Input
@@ -402,7 +420,10 @@ export default function LoginPage() {
               </div>
 
               <div>
-                <Label htmlFor="confirm-password" className="text-purple-300 mb-2 block">
+                <Label
+                  htmlFor="confirm-password"
+                  className="text-purple-300 mb-2 block"
+                >
                   Confirm New Password
                 </Label>
                 <Input
@@ -417,13 +438,22 @@ export default function LoginPage() {
                 />
               </div>
 
-              {newPassword && confirmPassword && newPassword !== confirmPassword && (
-                <p className="text-red-400 text-sm mt-1">Passwords don't match</p>
-              )}
+              {newPassword &&
+                confirmPassword &&
+                newPassword !== confirmPassword && (
+                  <p className="text-red-400 text-sm mt-1">
+                    Passwords don't match
+                  </p>
+                )}
 
               <Button
                 type="submit"
-                disabled={loading || !newPassword || !confirmPassword || newPassword !== confirmPassword}
+                disabled={
+                  loading ||
+                  !newPassword ||
+                  !confirmPassword ||
+                  newPassword !== confirmPassword
+                }
                 className="cursor-pointer w-full bg-purple-700 hover:bg-purple-800 text-white font-bold disabled:opacity-50"
               >
                 {loading ? "Resetting..." : "Reset Password"}
@@ -431,7 +461,6 @@ export default function LoginPage() {
             </form>
           </>
         )}
-
       </div>
     </div>
   );

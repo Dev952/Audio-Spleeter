@@ -28,11 +28,10 @@ import {
   Loader2,
   Trash2,
   Headphones,
-  Sliders ,
+  Sliders,
 } from "lucide-react";
 import { toast } from "sonner";
 import { getCurrentUser } from "@/app/actions/auth";
-
 
 interface UploadRecord {
   id: string;
@@ -154,7 +153,7 @@ export default function HistoryPage() {
     try {
       setDeleteLoading(uploadId);
       const response = await fetch(`/api/history?id=${uploadId}`, {
-        method: 'DELETE',
+        method: "DELETE",
       });
 
       const data = await response.json();
@@ -211,14 +210,14 @@ export default function HistoryPage() {
         return {
           icon: <Sliders className="h-5 w-5 text-purple-400" />,
           label: "Effects ",
-          color: "text-purple-400"
+          color: "text-purple-400",
         };
       case "separation":
       default:
         return {
           icon: <Music className="h-4 w-4 text-purple-400" />,
           label: "Separations",
-          color: "text-purple-400"
+          color: "text-purple-400",
         };
     }
   };
@@ -226,12 +225,12 @@ export default function HistoryPage() {
   // Format effects display
   const formatEffectsDisplay = (effectsApplied?: any) => {
     if (!effectsApplied) return null;
-    
+
     const effects = [];
     if (effectsApplied.pitch) effects.push(`Pitch: ${effectsApplied.pitch}`);
     if (effectsApplied.speed) effects.push(`Speed: ${effectsApplied.speed}`);
     if (effectsApplied.reverb) effects.push(`Reverb: ${effectsApplied.reverb}`);
-    
+
     return effects.length > 0 ? effects.join(" • ") : null;
   };
 
@@ -263,7 +262,7 @@ export default function HistoryPage() {
             <div className="h-6 w-px bg-purple-500/50" />
             <h1 className="text-2xl font-bold">Download History</h1>
           </div>
-          
+
           <div className="flex items-center space-x-4">
             {user && <div className="text-purple-300">Hi, {user.name}!</div>}
           </div>
@@ -283,7 +282,9 @@ export default function HistoryPage() {
           <Card className="bg-[#2A2A2A] text-white border border-purple-500/30">
             <CardContent className="text-center py-12">
               <FileAudio className="h-16 w-16 text-purple-500/50 mx-auto mb-4" />
-              <h3 className="text-xl font-semibold mb-2">No processing history yet</h3>
+              <h3 className="text-xl font-semibold mb-2">
+                No processing history yet
+              </h3>
               <p className="text-purple-300 mb-6">
                 Start by uploading your first audio file to see your history
                 here.
@@ -371,7 +372,9 @@ export default function HistoryPage() {
                   upload.processingStatus,
                   upload.errorMessage
                 );
-                const typeDisplay = getProcessingTypeDisplay(upload.processingType);
+                const typeDisplay = getProcessingTypeDisplay(
+                  upload.processingType
+                );
                 const effectsText = formatEffectsDisplay(upload.effectsApplied);
 
                 return (
@@ -384,15 +387,17 @@ export default function HistoryPage() {
                         <div className="flex-1">
                           <div className="flex items-center space-x-2 mb-2">
                             {typeDisplay.icon}
-                            <span className={`text-sm font-medium ${typeDisplay.color}`}>
+                            <span
+                              className={`text-sm font-medium ${typeDisplay.color}`}
+                            >
                               {typeDisplay.label}
                             </span>
                           </div>
-                          
+
                           <CardTitle className="text-lg font-semibold text-purple-300 mb-1">
                             {upload.originalFileName}
                           </CardTitle>
-                          
+
                           <div className="flex items-center space-x-4 text-sm text-gray-400">
                             <div className="flex items-center space-x-1">
                               <Calendar className="h-4 w-4" />
@@ -432,7 +437,7 @@ export default function HistoryPage() {
                             </div>
                           )}
                         </div>
-                        
+
                         <div className="flex items-center space-x-3">
                           <div
                             className={`flex items-center space-x-1 ${statusDisplay.className}`}
@@ -461,11 +466,15 @@ export default function HistoryPage() {
                             </AlertDialogTrigger>
                             <AlertDialogContent className="bg-[#2A2A2A] text-white border border-red-500/30">
                               <AlertDialogHeader>
-                                <AlertDialogTitle className="text-red-400">Delete Processing Record</AlertDialogTitle>
+                                <AlertDialogTitle className="text-red-400">
+                                  Delete Processing Record
+                                </AlertDialogTitle>
                                 <AlertDialogDescription className="text-gray-300">
-                                  Are you sure you want to delete "{upload.originalFileName}"? 
-                                  This will permanently remove the processing record and all associated files. 
-                                  This action cannot be undone.
+                                  Are you sure you want to delete "
+                                  {upload.originalFileName}"? This will
+                                  permanently remove the processing record and
+                                  all associated files. This action cannot be
+                                  undone.
                                 </AlertDialogDescription>
                               </AlertDialogHeader>
                               <AlertDialogFooter>
@@ -473,7 +482,12 @@ export default function HistoryPage() {
                                   Cancel
                                 </AlertDialogCancel>
                                 <AlertDialogAction
-                                  onClick={() => handleDeleteUpload(upload.id, upload.originalFileName)}
+                                  onClick={() =>
+                                    handleDeleteUpload(
+                                      upload.id,
+                                      upload.originalFileName
+                                    )
+                                  }
                                   className="bg-red-600 text-white hover:bg-red-700"
                                 >
                                   Delete
@@ -488,89 +502,95 @@ export default function HistoryPage() {
                     {upload.processingStatus === "completed" && (
                       <CardContent className="pt-0">
                         {/* Vocal Separation Results */}
-                        {upload.processingType === "separation" && upload.vocalsFilePath && upload.instrumentalFilePath && (
-                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            <div className="bg-[#1F1F1F] p-4 rounded-lg border border-purple-800/30">
-                              <div className="flex items-center justify-between mb-2">
-                                <div className="flex items-center space-x-2">
-                                  <Mic className="h-4 w-4 text-purple-400" />
-                                  <span className="font-medium text-purple-300">
-                                    Vocals
-                                  </span>
+                        {upload.processingType === "separation" &&
+                          upload.vocalsFilePath &&
+                          upload.instrumentalFilePath && (
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                              <div className="bg-[#1F1F1F] p-4 rounded-lg border border-purple-800/30">
+                                <div className="flex items-center justify-between mb-2">
+                                  <div className="flex items-center space-x-2">
+                                    <Mic className="h-4 w-4 text-purple-400" />
+                                    <span className="font-medium text-purple-300">
+                                      Vocals
+                                    </span>
+                                  </div>
+                                  <a
+                                    href={upload.vocalsFilePath}
+                                    download
+                                    className="text-purple-400 hover:text-purple-300 transition-colors"
+                                  >
+                                    <Download className="h-4 w-4" />
+                                  </a>
                                 </div>
-                                <a
-                                  href={upload.vocalsFilePath}
-                                  download
-                                  className="text-purple-400 hover:text-purple-300 transition-colors"
-                                >
-                                  <Download className="h-4 w-4" />
-                                </a>
+                                <audio controls className="w-full">
+                                  <source
+                                    src={upload.vocalsFilePath}
+                                    type="audio/wav"
+                                  />
+                                </audio>
                               </div>
-                              <audio controls className="w-full">
-                                <source
-                                  src={upload.vocalsFilePath}
-                                  type="audio/wav"
-                                />
-                              </audio>
-                            </div>
 
-                            <div className="bg-[#1F1F1F] p-4 rounded-lg border border-purple-800/30">
-                              <div className="flex items-center justify-between mb-2">
-                                <div className="flex items-center space-x-2">
-                                  <Music className="h-4 w-4 text-purple-400" />
-                                  <span className="font-medium text-purple-300">
-                                    Instrumental
-                                  </span>
+                              <div className="bg-[#1F1F1F] p-4 rounded-lg border border-purple-800/30">
+                                <div className="flex items-center justify-between mb-2">
+                                  <div className="flex items-center space-x-2">
+                                    <Music className="h-4 w-4 text-purple-400" />
+                                    <span className="font-medium text-purple-300">
+                                      Instrumental
+                                    </span>
+                                  </div>
+                                  <a
+                                    href={upload.instrumentalFilePath}
+                                    download
+                                    className="text-purple-400 hover:text-purple-300 transition-colors"
+                                  >
+                                    <Download className="h-4 w-4" />
+                                  </a>
                                 </div>
-                                <a
-                                  href={upload.instrumentalFilePath}
-                                  download
-                                  className="text-purple-400 hover:text-purple-300 transition-colors"
-                                >
-                                  <Download className="h-4 w-4" />
-                                </a>
+                                <audio controls className="w-full">
+                                  <source
+                                    src={upload.instrumentalFilePath}
+                                    type="audio/wav"
+                                  />
+                                </audio>
                               </div>
-                              <audio controls className="w-full">
-                                <source
-                                  src={upload.instrumentalFilePath}
-                                  type="audio/wav"
-                                />
-                              </audio>
                             </div>
-                          </div>
-                        )}
+                          )}
 
                         {/* Effects Processing Results */}
-                        {upload.processingType === "effects" && upload.processedAudioUrl && (
-                          <div className="bg-[#1F1F1F] p-4 rounded-lg border border-purple-800/30">
-                            <div className="flex items-center justify-between mb-2">
-                              <div className="flex items-center space-x-2">
-                                <Headphones className="h-4 w-4 text-purple-400" />
-                                <span className="font-medium text-purple-300">
-                                  Processed Audio
-                                </span>
-                                {effectsText && (
-                                  <span className="text-xs text-orange-300 bg-orange-900/30 px-2 py-1 rounded">
-                                    {effectsText}
+                        {upload.processingType === "effects" &&
+                          upload.processedAudioUrl && (
+                            <div className="bg-[#1F1F1F] p-4 rounded-lg border border-purple-800/30">
+                              <div className="flex items-center justify-between mb-2">
+                                <div className="flex items-center space-x-2">
+                                  <Headphones className="h-4 w-4 text-purple-400" />
+                                  <span className="font-medium text-purple-300">
+                                    Processed Audio
                                   </span>
-                                )}
+                                  {effectsText && (
+                                    <span className="text-xs text-orange-300 bg-orange-900/30 px-2 py-1 rounded">
+                                      {effectsText}
+                                    </span>
+                                  )}
+                                </div>
+                                <a
+                                  href={upload.processedAudioUrl}
+                                  download={upload.originalFileName.replace(
+                                    /\.[^.]+$/,
+                                    "_effects.wav"
+                                  )}
+                                  className="text-purple-400 hover:text-purple-300 transition-colors"
+                                >
+                                  <Download className="h-4 w-4" />
+                                </a>
                               </div>
-                              <a
-                                href={upload.processedAudioUrl}
-                                download={upload.originalFileName.replace(/\.[^.]+$/, "_effects.wav")}
-                                className="text-purple-400 hover:text-purple-300 transition-colors"
-                              >
-                                <Download className="h-4 w-4" />
-                              </a>
+                              <audio controls className="w-full">
+                                <source
+                                  src={upload.processedAudioUrl}
+                                  type="audio/wav"
+                                />
+                              </audio>
                             </div>
-                            <audio controls className="w-full">
-                              <source
-                                src={upload.processedAudioUrl}
-                                type="audio/wav"
-                              />
-                            </audio>
-                          </div>
-                        )}
+                          )}
                       </CardContent>
                     )}
                   </Card>

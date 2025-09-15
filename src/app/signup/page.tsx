@@ -39,7 +39,7 @@ export default function SignupPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     // Client-side validation
     if (password !== confirmPassword) {
       toast.error("Passwords do not match!");
@@ -55,9 +55,9 @@ export default function SignupPage() {
 
     try {
       const formData = new FormData();
-      formData.append('name', name);
-      formData.append('email', email);
-      formData.append('password', password);
+      formData.append("name", name);
+      formData.append("email", email);
+      formData.append("password", password);
 
       const result = await registerUser(formData);
 
@@ -72,7 +72,6 @@ export default function SignupPage() {
       setTimeout(() => {
         router.push("/login");
       }, 1000);
-
     } catch (error) {
       toast.error("Something went wrong. Please try again.");
       console.error("Registration error:", error);
@@ -92,7 +91,7 @@ export default function SignupPage() {
       </div>
     );
   }
-  
+
   return (
     <div className="flex items-center justify-center min-h-screen w-full text-white bg-gradient-to-br from-black via-purple-900 to-purple-800">
       <div className="bg-[#1F1F1F] rounded-2xl shadow-lg p-8 w-full max-w-md border border-purple-700">
@@ -105,14 +104,14 @@ export default function SignupPage() {
             <Label htmlFor="name" className="text-purple-300 mb-2 block">
               Name
             </Label>
-            <Input 
-              id="name" 
-              type="text" 
-              placeholder="Your Name" 
+            <Input
+              id="name"
+              type="text"
+              placeholder="Your Name"
               value={name}
               onChange={(e) => setName(e.target.value)}
               className="text-white placeholder-gray-300"
-              required 
+              required
             />
           </div>
 
@@ -120,14 +119,14 @@ export default function SignupPage() {
             <Label htmlFor="email" className="text-purple-300 mb-2 block">
               Email
             </Label>
-            <Input 
-              id="email" 
-              type="email" 
+            <Input
+              id="email"
+              type="email"
               placeholder="you@example.com"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               className="text-white placeholder-gray-300"
-              required 
+              required
             />
           </div>
 
@@ -147,7 +146,10 @@ export default function SignupPage() {
           </div>
 
           <div>
-            <Label htmlFor="confirmPassword" className="text-purple-300 mb-2 block">
+            <Label
+              htmlFor="confirmPassword"
+              className="text-purple-300 mb-2 block"
+            >
               Confirm Password
             </Label>
             <Input

@@ -1,32 +1,71 @@
 "use client";
-
 import React from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import PitchReverb from "@/components/ui/PitchReverb";
-import { NavigationMenu, NavigationMenuItem, NavigationMenuList } from "@/components/ui/navigation-menu";
+import {
+  NavigationMenu,
+  NavigationMenuItem,
+  NavigationMenuList,
+} from "@/components/ui/navigation-menu";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft, Music, Wand2 } from "lucide-react";
-
-
-import { useEffect, useState} from "react";
+import { useEffect, useState } from "react";
+import { getCurrentUser } from "@/app/actions/auth";
 
 export default function EffectsPage() {
   const router = useRouter();
+  const [showWelcome, setShowWelcome] = useState(true);
+  const [user, setUser] = useState<any>(null);
+  const [isAuthenticating, setIsAuthenticating] = useState(true);
 
-const [showWelcome, setShowWelcome] = useState(true);
+  // Authentication check using server actions - same as home page
+  useEffect(() => {
+    const checkAuth = async () => {
+      setIsAuthenticating(true);
+      try {
+        const result = await getCurrentUser();
+        if (result.success && result.user) {
+          setUser(result.user);
+        } else {
+          // No valid auth, redirect to login
+          router.push("/login");
+          return;
+        }
+      } catch (error) {
+        console.error("Auth check failed:", error);
+        router.push("/login");
+        return;
+      } finally {
+        setIsAuthenticating(false);
+      }
+    };
 
-useEffect(() => {
-  const timer = setTimeout(() => {
-    setShowWelcome(false);
-  }, 2000);
-  return () => clearTimeout(timer);
-}, []);
+    checkAuth();
+  }, [router]);
 
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setShowWelcome(false);
+    }, 5000); // Same 5 seconds as home page
+
+    return () => clearTimeout(timer);
+  }, []);
+
+  // Show loading while authenticating - same as home page
+  if (isAuthenticating) {
+    return (
+      <div className="min-h-screen w-full text-white flex items-center justify-center bg-gradient-to-br from-black via-purple-900 to-purple-800">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-purple-500 mx-auto mb-4"></div>
+          <p className="text-lg text-purple-300">Authenticating...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <>
-    
       <div className="min-h-screen w-full text-white bg-gradient-to-br from-black via-purple-900 to-purple-800">
         <div className="sticky top-0 z-50 shadow-md rounded-b-[2rem] overflow-hidden">
           <div className="absolute inset-0 bg-gradient-to-r from-purple-900 via-black to-purple-900 opacity-40 blur-sm pointer-events-none" />
@@ -38,14 +77,15 @@ useEffect(() => {
               <div className="text-2xl font-bold bg-gradient-to-r from-purple-400 to-pink-400 bg-clip-text text-transparent">
                 Audio Effects Studio
               </div>
-                 {/* Welcome Message */}
-    {showWelcome && (
-      <div className="absolute left-1/2 transform -translate-x-1/2 mt-1 text-center">
-        <span className="text-lg font-medium text-purple-300  ">
-          Welcome Premium Unlocked ✨
-        </span>
-      </div>
-    )}
+
+              {/* Welcome Message */}
+              {user && showWelcome && (
+                <div className="absolute left-1/2 transform -translate-x-1/2 mt-1 text-center">
+                  <span className="text-lg font-medium text-purple-300">
+                    Welcome to Audio Effect Studio {user.name}! ✨
+                  </span>
+                </div>
+              )}
             </div>
             <NavigationMenuList className="flex space-x-6 items-center">
               <NavigationMenuItem>
@@ -62,8 +102,7 @@ useEffect(() => {
         </div>
 
         <main className="w-full flex items-center justify-center px-4 py-8">
-          <Card className="bg-gradient-to-br from-gray-900/90 to-gray-800/90 backdrop-blur-sm text-white shadow-2xl border border-purple-500/20 rounded-2xl w-full max-w-5xl">
-           
+          <Card className="bg-gradient-to-br from-gray-800/90 to-gray-800/90 backdrop-blur-sm text-white shadow-2xl border border-purple-500/20 rounded-2xl w-full max-w-4xl">
             <CardContent className="px-8 pb-8">
               <PitchReverb />
             </CardContent>

@@ -89,23 +89,23 @@ export default function Home() {
   }, [router]);
 
   useEffect(() => {
-  const fetchRecent = async () => {
-    try {
-      const res = await fetch(`/api/history?limit=100`);
-      const data = await res.json();
-      if (data?.success && Array.isArray(data.uploads)) {
-        // Filter out 'effects' uploads
-        const filtered = data.uploads.filter(
-          (u : any) => u.processingType !== "effects"
-        );
-        setRecentUploads(filtered);
+    const fetchRecent = async () => {
+      try {
+        const res = await fetch(`/api/history?limit=100`);
+        const data = await res.json();
+        if (data?.success && Array.isArray(data.uploads)) {
+          // Filter out 'effects' uploads
+          const filtered = data.uploads.filter(
+            (u: any) => u.processingType !== "effects"
+          );
+          setRecentUploads(filtered);
+        }
+      } catch (e) {
+        console.log("Failed to fetch recent uploads:", e);
       }
-    } catch (e) {
-      console.log("Failed to fetch recent uploads:", e);
-    }
-  };
-  fetchRecent();
-}, []);
+    };
+    fetchRecent();
+  }, []);
 
   const handleLogout = async () => {
     try {
@@ -312,7 +312,7 @@ export default function Home() {
       {/* Main Section */}
       <main
         id="home"
-        className="min-h-screen flex flex-col items-center justify-center px-4 py-8 relative z-10"
+        className=" min-h-screen flex flex-col items-center justify-center px-4 py-8 relative z-10"
       >
         <Card className="bg-[#1F1F1F] text-white shadow-2xl border border-neutral-800 rounded-2xl w-full max-w-3xl">
           <CardHeader>
@@ -348,18 +348,18 @@ export default function Home() {
             />
           </CardContent>
           <CardFooter className="pt-4 flex flex-col items-center gap-4">
-           <button
-  onClick={handleUpload}
-  disabled={loading || !file}
-  className="cursor-pointer relative overflow-hidden rounded-full px-6 py-3 font-bold text-white shadow-lg disabled:opacity-70 bg-gradient-to-r from-purple-600 to-purple-700 hover:from-purple-500 hover:to-purple-800 transition-colors duration-300 w-full max-w-xs"
->
-  <span className="relative z-10">
-    {loading ? `Processing ${progress}%` : "Upload"}
-  </span>
-  {loading && (
-    <span className="absolute inset-0 bg-gradient-to-b from-purple-500 to-purple-700 animate-pulse opacity-30 blur-md" />
-  )}
-</button>
+            <button
+              onClick={handleUpload}
+              disabled={loading || !file}
+              className="cursor-pointer relative overflow-hidden rounded-full px-6 py-3 font-bold text-white shadow-lg disabled:opacity-70 bg-gradient-to-r from-purple-600 to-purple-700 hover:from-purple-500 hover:to-purple-800 transition-colors duration-300 w-full max-w-xs"
+            >
+              <span className="relative z-10">
+                {loading ? `Processing ${progress}%` : "Upload"}
+              </span>
+              {loading && (
+                <span className="absolute inset-0 bg-gradient-to-b from-purple-500 to-purple-700 animate-pulse opacity-30 blur-md" />
+              )}
+            </button>
 
             {loading && (
               <div className="w-full max-w-xs mt-2 bg-gray-700 rounded-full h-2.5 overflow-hidden">
@@ -514,12 +514,16 @@ export default function Home() {
       >
         <h2 className="text-3xl font-bold mb-6">About This App</h2>
         <p className="max-w-3xl mx-auto text-lg text-purple-200 leading-relaxed">
-          This AI-powered Vocal Remover App helps you separate vocals and
-          instrumentals from your favorite songs in real time. Whether you're a
-          karaoke lover, music producer, or remix artist, this tool gives you
-          clean tracks for your next creative project — all with a simple
-          upload. Powered by machine learning, optimized for ease of use, and
-          built for creators like you.
+          This AI-powered Audio Processing Studio helps you separate vocals and
+          instrumentals from your favorite songs in real time, apply
+          professional audio effects like pitch shifting and reverb, and
+          generate live lyrics with synchronized playback. Whether you're a
+          karaoke lover, music producer, remix artist, or content creator, this
+          comprehensive tool gives you clean tracks, enhanced audio, and
+          real-time lyric transcription for your next creative project — all
+          with a simple upload. Powered by machine learning, advanced audio
+          processing, and speech recognition technology, optimized for ease of
+          use, and built for creators like you.
         </p>
       </section>
     </div>
