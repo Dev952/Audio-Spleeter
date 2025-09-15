@@ -257,7 +257,7 @@ export default function PitchReverb({
 
     toast("Processing...", {
       description: "Applying effects",
-      icon: "⚙️",
+      icon: <Loader2 className="h-5 w-5 mr-2 animate-spin" />,
       style: {
         background: "linear-gradient(135deg, #8b5cf6, #ec4899)",
         color: "white",
