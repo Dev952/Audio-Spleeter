@@ -12,6 +12,13 @@ def apply_effects(file_path, params, output_path):
         pitch_shift = params.get("pitch", 0)
         speed_factor = params.get("speed", 1.0)
         reverb_level = params.get("reverb", 0)  # 0-10 scale
+        volume_knob = params.get("volume", 5)  # 0-10 from frontend knob
+        
+       # Map frontend volume (0-10) to internal range (900-1000)
+        volume_factor = 900 + (volume_knob / 10.0) * 100  # Maps 0->900, 10->1000
+        volume_multiplier = volume_factor / 100.0  # Convert to multiplier (9.0 to 10.0)
+        
+        print(f"Volume knob: {volume_knob}, Volume factor: {volume_factor}, Multiplier: {volume_multiplier:.2f}", file=sys.stderr)
 
         # Import required libraries
         try:
@@ -79,10 +86,10 @@ def apply_effects(file_path, params, output_path):
                 print(f"Speed change failed: {str(e)}", file=sys.stderr)
                 return {"success": False, "error": f"Speed change failed: {str(e)}"}
 
-        # Apply reverb using FFmpeg if needed
+        # Apply reverb and volume using FFmpeg
         if reverb_level > 0:
             try:
-                print(f"Applying reverb: level {reverb_level}", file=sys.stderr)
+                print(f"Applying reverb: level {reverb_level} with volume {volume_multiplier:.2f}", file=sys.stderr)
                 print(f"Current file for reverb processing: {current_file}", file=sys.stderr)
                 
                 # Path to reverb impulse response file
@@ -92,15 +99,15 @@ def apply_effects(file_path, params, output_path):
                 # Check if reverb IR file exists
                 if not os.path.exists(reverb_ir_path):
                     print(f"Reverb IR file not found, using built-in echo effect", file=sys.stderr)
-                    # Use FFmpeg's built-in reverb instead
+                    # Use FFmpeg's built-in reverb with volume
                     reverb_strength = reverb_level / 10.0  # Convert 0-10 to 0.0-1.0
-                    volume_boost = 1.0 + (reverb_strength * 0.8)  # 1.0 to 1.8x volume
+                    final_volume = volume_multiplier * (1.0 + (reverb_strength * 0.8))  # Combine volume with reverb boost
                     
-                    print(f"Echo settings - strength: {reverb_strength}, volume: {volume_boost:.2f}", file=sys.stderr)
+                    print(f"Echo settings - strength: {reverb_strength}, final volume: {final_volume:.2f}", file=sys.stderr)
                     
                     cmd = [
                         'ffmpeg', '-y', '-i', current_file,
-                        '-filter:a', f'aecho=0.8:0.88:60:0.4,volume={volume_boost:.2f}',
+                        '-filter:a', f'aecho=0.8:0.88:60:0.4,volume={final_volume:.2f}',
                         output_path
                     ]
                     
@@ -108,17 +115,16 @@ def apply_effects(file_path, params, output_path):
                     
                 else:
                     print(f"Using convolution reverb with hall.wav", file=sys.stderr)
-                    # Use convolution reverb with impulse response
-                    # Linear scaling: level 1 = 1.1x volume, level 10 = 2.0x volume
-                    volume_factor = 1.0 + (reverb_level / 10.0)
+                    # Use convolution reverb with impulse response and volume
+                    final_volume = volume_multiplier * (1.0 + (reverb_level / 10.0))
                     
-                    print(f"Convolution settings - volume: {volume_factor:.2f}", file=sys.stderr)
+                    print(f"Convolution settings - final volume: {final_volume:.2f}", file=sys.stderr)
                     
                     cmd = [
                         'ffmpeg', '-y',
                         '-i', current_file,
                         '-i', reverb_ir_path,
-                        '-filter_complex', f'afir,volume={volume_factor:.2f}',
+                        '-filter_complex', f'afir,volume={final_volume:.2f}',
                         output_path
                     ]
                     
@@ -145,24 +151,34 @@ def apply_effects(file_path, params, output_path):
                     
             except Exception as e:
                 print(f"Reverb failed with error: {str(e)}", file=sys.stderr)
-                # Fallback: copy current file to output without reverb
+                # Fallback: apply volume only
+                try:
+                    print(f"Falling back to volume adjustment only: {volume_multiplier:.2f}", file=sys.stderr)
+                    cmd = ['ffmpeg', '-y', '-i', current_file, '-filter:a', f'volume={volume_multiplier:.2f}', output_path]
+                    result = subprocess.run(cmd, capture_output=True, text=True)
+                    if result.returncode != 0:
+                        raise Exception(f"Volume adjustment failed: {result.stderr}")
+                    print("Applied volume adjustment without reverb as fallback", file=sys.stderr)
+                except Exception as copy_error:
+                    return {"success": False, "error": f"Reverb failed and volume fallback failed: {str(copy_error)}"}
+        else:
+            # No reverb needed, apply volume only
+            try:
+                print(f"Applying volume only: {volume_multiplier:.2f}", file=sys.stderr)
+                cmd = ['ffmpeg', '-y', '-i', current_file, '-filter:a', f'volume={volume_multiplier:.2f}', output_path]
+                result = subprocess.run(cmd, capture_output=True, text=True)
+                if result.returncode != 0:
+                    raise Exception(f"Volume adjustment failed: {result.stderr}")
+                print("Volume adjustment applied successfully", file=sys.stderr)
+            except Exception as e:
+                print(f"Volume adjustment failed: {str(e)}", file=sys.stderr)
                 try:
                     import shutil
-                    print("Falling back to copy without reverb", file=sys.stderr)
+                    print("Falling back to copy without volume adjustment", file=sys.stderr)
                     shutil.copy2(current_file, output_path)
-                    print("Applied effects without reverb as fallback", file=sys.stderr)
+                    print("File copied without volume adjustment as fallback", file=sys.stderr)
                 except Exception as copy_error:
-                    return {"success": False, "error": f"Reverb failed and fallback copy failed: {str(copy_error)}"}
-        else:
-            # No reverb needed, copy current file to output
-            try:
-                import shutil
-                print("No reverb requested, copying file", file=sys.stderr)
-                print(f"Copying from: {current_file} to: {output_path}", file=sys.stderr)
-                shutil.copy2(current_file, output_path)
-                print("File copied without reverb", file=sys.stderr)
-            except Exception as copy_error:
-                return {"success": False, "error": f"Failed to copy processed file: {str(copy_error)}"}
+                    return {"success": False, "error": f"Volume adjustment failed and fallback copy failed: {str(copy_error)}"}
 
         # Clean up temporary files
         for temp_file in [temp_pitch_file, temp_speed_file]:
@@ -247,7 +263,9 @@ def apply_effects(file_path, params, output_path):
             "original_duration": original_duration,
             "final_duration": final_duration,
             "speed_factor": speed_factor,
-            "reverb_level": reverb_level
+            "reverb_level": reverb_level,
+            "volume_level": volume_knob,
+            "volume_multiplier": volume_multiplier
         }
 
     except Exception as e:

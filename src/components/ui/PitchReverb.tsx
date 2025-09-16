@@ -350,6 +350,16 @@ export default function PitchReverb({
     }
   };
 
+  const applyLoFiPreset = () => {
+    setSpeed(0.75);
+    setPitch(-2);
+    setReverb(10);
+
+    toast.info("Lo-Fi Preset Applied", {
+      description: "Speed: 0.75x, Pitch: -2 semitones, Reverb: Max",
+    });
+  };
+
   const resetEffects = (showToast = true) => {
     setPitch(0);
     setReverb(0);
@@ -630,6 +640,7 @@ export default function PitchReverb({
           </div>
 
           {/* Action Buttons */}
+
           <div className="flex flex-wrap gap-4 justify-center mb-8">
             <Button
               onClick={() => resetEffects(true)}
@@ -639,6 +650,14 @@ export default function PitchReverb({
             >
               <RotateCcw className="h-4 w-4 mr-2" />
               Reset All
+            </Button>
+
+            <Button
+              onClick={applyLoFiPreset}
+              className=" cursor-pointer px-5 py-3 text-lg font-semibold bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white"
+              disabled={isProcessing}
+            >
+              Lo-Fi
             </Button>
 
             <Button
