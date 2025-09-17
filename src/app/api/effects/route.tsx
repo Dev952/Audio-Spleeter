@@ -212,7 +212,7 @@ historyRecord = new UploadHistory({
   effectsApplied: {
     pitch: pitch !== 0 ? `${pitch > 0 ? '+' : ''}${pitch} semitones` : null,
     speed: speed !== 1.0 ? `${speed}x speed` : null,
-    reverb: reverb > 0 ? `FFmpeg reverb level ${reverb}` : null
+    reverb: reverb > 0 ? `reverb level ${reverb}` : null
   }
 });
 
