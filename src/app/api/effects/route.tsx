@@ -67,7 +67,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       originalName = file.name;
 
       const buffer = Buffer.from(await file.arrayBuffer());
-      const uploadDir = path.join(process.cwd(), "public", "uploads",  "effects", uploadId);
+      const uploadDir = path.join(process.cwd(), "public", "uploads",  uploadId);
       if (!fs.existsSync(uploadDir)) {
         fs.mkdirSync(uploadDir, { recursive: true });
       }
