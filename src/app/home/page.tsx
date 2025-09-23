@@ -244,7 +244,7 @@ export default function Home() {
       <div className="sticky top-0 z-50 shadow-md rounded-b-[2rem] overflow-hidden">
         <div className="absolute inset-0 bg-gradient-to-r from-purple-900 via-black to-purple-900 opacity-40 blur-sm pointer-events-none" />
         <NavigationMenu className="bg-black/70 px-4 py-6 flex justify-between items-center relative z-10">
-          <div className="text-2xl font-bold">🎶 Audio Splitter</div>
+          <div className="text-2xl font-bold">🎶YOURWAV</div>
 
           {user && showWelcome && (
             <div className="absolute left-1/2 transform -translate-x-1/2 text-center">

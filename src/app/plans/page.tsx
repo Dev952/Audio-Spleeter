@@ -53,9 +53,8 @@ export default function PlansPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-purple-900 to-black text-white flex flex-col items-center py-20 px-6">
-      {/* Back button */}
-      <button
+    <div className="min-h-screen bg-gradient-to-br from-black via-purple-900 to-purple-800 text-white flex flex-col items-center py-20 px-6">
+     <button
         onClick={() => router.back()}
         className="absolute top-6 left-6 text-purple-300 hover:text-white transition-colors cursor-pointer bg-transparent border-none text-lg"
       >
