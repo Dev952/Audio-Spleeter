@@ -67,7 +67,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       originalName = file.name;
 
       const buffer = Buffer.from(await file.arrayBuffer());
-      const uploadDir = path.join(process.cwd(), "public", "uploads",  uploadId);
+      const uploadDir = path.join(process.cwd(), "public", "uploads", uploadId);
       if (!fs.existsSync(uploadDir)) {
         fs.mkdirSync(uploadDir, { recursive: true });
       }
@@ -117,12 +117,12 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
         error: "Unsupported content type. Use multipart/form-data or application/json."
       }, { status: 400 });
     }
-    // After you resolve fullAudioPath (either from uploaded file or JSON input):
-const relativeInputPath = "/" + path.relative(
-  path.join(process.cwd(), "public"),
-  fullAudioPath
-).replace(/\\/g, "/");
 
+    // Create relative input path for database storage
+    const relativeInputPath = "/" + path.relative(
+      path.join(process.cwd(), "public"),
+      fullAudioPath
+    ).replace(/\\/g, "/");
 
     // Validate parameters
     if (speed < 0.1 || speed > 5.0) {
@@ -190,33 +190,30 @@ const relativeInputPath = "/" + path.relative(
 
     // Track processing start time
     const processingStartTime = new Date();
-    let historyRecord = null;
+    let historyRecord: any = null;
 
     // Create database record if user is authenticated
     if (userId) {
       try {
         await dbConnect();
 
-                
-historyRecord = new UploadHistory({
-  userId,
-  originalFileName: originalName,
-  originalFileSize: fs.statSync(fullAudioPath).size,
-  folderPath: `/uploads/${uploadId}`,
-  originalFilePath: relativeInputPath,   // ✅ now correct
-  processingType: 'effects',
-  processingStatus: 'processing',
-  processingStartTime,
-  fileFormat: path.extname(originalName).toLowerCase(),
-  processedAudioUrl: null,
-  effectsApplied: {
-    pitch: pitch !== 0 ? `${pitch > 0 ? '+' : ''}${pitch} semitones` : null,
-    speed: speed !== 1.0 ? `${speed}x speed` : null,
-    reverb: reverb > 0 ? `reverb level ${reverb}` : null
-  }
-});
-
-
+        historyRecord = new UploadHistory({
+          userId,
+          originalFileName: originalName,
+          originalFileSize: fs.statSync(fullAudioPath).size,
+          folderPath: `/uploads/${uploadId}`,
+          originalFilePath: relativeInputPath,
+          processingType: 'effects',
+          processingStatus: 'processing',
+          processingStartTime,
+          fileFormat: path.extname(originalName).toLowerCase(),
+          processedAudioUrl: null,
+          effectsApplied: {
+            pitch: pitch !== 0 ? `${pitch > 0 ? '+' : ''}${pitch} semitones` : null,
+            speed: speed !== 1.0 ? `${speed}x speed` : null,
+            reverb: reverb > 0 ? `reverb level ${reverb}` : null
+          }
+        });
 
         await historyRecord.save();
         console.log("Created effects processing record in database");
@@ -271,8 +268,7 @@ historyRecord = new UploadHistory({
         } catch (cleanupError) {
           console.log("Cleanup error:", cleanupError);
         }
-        
-          
+
         const processingEndTime = new Date();
         const processingDuration = Math.round((processingEndTime.getTime() - processingStartTime.getTime()) / 1000);
 

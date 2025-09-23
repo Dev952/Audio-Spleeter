@@ -189,7 +189,7 @@ export async function DELETE(req: NextRequest) {
     // Delete record from database
     await UploadHistory.deleteOne({ _id: uploadId, userId });
     
-    console.log(`✅ Successfully deleted upload from database`);
+    console.log('✅ Successfully deleted upload from database');
 
     return NextResponse.json({
       success: true,

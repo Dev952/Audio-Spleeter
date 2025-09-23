@@ -8,8 +8,7 @@ import { cookies } from "next/headers";
 import dbConnect from "@/lib/mongodb";
 import UploadHistory from "@/models/UploadHistory";
 
-
-export async function POST(req: NextRequest) {
+export async function POST(req: NextRequest): Promise<Response> {
   let uploadRecord: any = null;
   
   try {
@@ -96,7 +95,7 @@ export async function POST(req: NextRequest) {
           // Match progress from PROGRESS:xx
           const match = text.match(/PROGRESS:(\d+)/);
           if (match) {
-            controller.enqueue(`PROGRESS:${match[1]}\n`); // Send to frontend
+            controller.enqueue(new TextEncoder().encode(`PROGRESS:${match[1]}\n`)); // Send to frontend
           }
         });
 
@@ -120,17 +119,19 @@ export async function POST(req: NextRequest) {
               });
 
               // Send final 100% just in case
-              controller.enqueue(`PROGRESS:100\n`);
+              controller.enqueue(new TextEncoder().encode(`PROGRESS:100\n`));
 
               // Send result paths to frontend as JSON with original filename
               controller.enqueue(
-                JSON.stringify({
-                  type: "result",
-                  folder: `uploads/${uuid}`,
-                  originalName: originalName,
-                  vocals: `/uploads/${uuid}/${nameWithoutExt}_Vocals.wav`,
-                  instrumental: `/uploads/${uuid}/${nameWithoutExt}_Instruments.wav`,
-                }) + "\n"
+                new TextEncoder().encode(
+                  JSON.stringify({
+                    type: "result",
+                    folder: `uploads/${uuid}`,
+                    originalName: originalName,
+                    vocals: `/uploads/${uuid}/${nameWithoutExt}_Vocals.wav`,
+                    instrumental: `/uploads/${uuid}/${nameWithoutExt}_Instruments.wav`,
+                  }) + "\n"
+                )
               );
             } else {
               // Update upload record as failed
@@ -141,24 +142,26 @@ export async function POST(req: NextRequest) {
                 errorMessage: `Processing failed with code ${code}`,
               });
 
-              controller.error("Python process failed");
+              controller.error(new Error("Python process failed"));
             }
           } catch (dbError) {
             console.error("Database update error:", dbError);
             // Continue with the response even if DB update fails
             if (code === 0) {
-              controller.enqueue(`PROGRESS:100\n`);
+              controller.enqueue(new TextEncoder().encode(`PROGRESS:100\n`));
               controller.enqueue(
-                JSON.stringify({
-                  type: "result",
-                  folder: `uploads/${uuid}`,
-                  originalName: originalName,
-                  vocals: `/uploads/${uuid}/${nameWithoutExt}_Vocals.wav`,
-                  instrumental: `/uploads/${uuid}/${nameWithoutExt}_Instruments.wav`,
-                }) + "\n"
+                new TextEncoder().encode(
+                  JSON.stringify({
+                    type: "result",
+                    folder: `uploads/${uuid}`,
+                    originalName: originalName,
+                    vocals: `/uploads/${uuid}/${nameWithoutExt}_Vocals.wav`,
+                    instrumental: `/uploads/${uuid}/${nameWithoutExt}_Instruments.wav`,
+                  }) + "\n"
+                )
               );
             } else {
-              controller.error("Python process failed");
+              controller.error(new Error("Python process failed"));
             }
           }
           

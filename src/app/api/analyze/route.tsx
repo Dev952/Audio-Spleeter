@@ -4,7 +4,7 @@ import path from "path";
 import fs from "fs";
 import { v4 as uuidv4 } from "uuid";
 
-export async function POST(request: NextRequest) {
+export async function POST(request: NextRequest): Promise<NextResponse> {
   let tempInputPath: string | null = null;
   
   try {
@@ -120,7 +120,7 @@ export async function POST(request: NextRequest) {
     const pythonProcess = spawn("python", [
       scriptPath,
       fullAudioPath,
-      JSON.stringify({ pitch, speed: 1.0 }), // Only analyze, don't apply effectsb
+      JSON.stringify({ pitch, speed: 1.0 }), // Only analyze, don't apply effects
       outputPath,
     ], {
       stdio: ['pipe', 'pipe', 'pipe']
@@ -141,7 +141,7 @@ export async function POST(request: NextRequest) {
       console.log("Analysis stderr:", text);
     });
 
-    return new Promise((resolve) => {
+    return new Promise<NextResponse>((resolve) => {
       // Set timeout for analysis
       const timeoutId = setTimeout(() => {
         pythonProcess.kill('SIGTERM');
