@@ -68,14 +68,16 @@ COPY --from=builder /app/package*.json ./
 # Install only production dependencies
 RUN npm ci --only=production --ignore-scripts
 
-# Copy built Next.js app
+# Copy essential files and any config files that exist
 COPY --from=builder /app/.next ./.next
 COPY --from=builder /app/public ./public
+COPY --from=builder /app/package*.json ./
 
-# Copy other necessary files
-COPY --from=builder /app/next.config.js ./
-COPY --from=builder /app/tailwind.config.js ./
-COPY --from=builder /app/postcss.config.js ./
+# Copy config files in a way that doesn't fail if they don't exist
+RUN mkdir -p /tmp/configs
+COPY --from=builder /app/ /tmp/configs/
+RUN find /tmp/configs -maxdepth 1 -name "*.config.*" -exec cp {} ./ \; 2>/dev/null || true
+RUN rm -rf /tmp/configs
 
 # Copy source files needed at runtime
 COPY --from=builder /app/src ./src
