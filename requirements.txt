@@ -1,0 +1,14 @@
+# Audio processing and ML libraries
+librosa==0.10.0
+matplotlib==3.8.0
+tqdm==4.66.0
+numpy==1.26.4
+
+# PyTorch (CPU-only to keep image smaller)
+torch==2.0.1+cpu
+torchaudio==2.0.2+cpu
+-f https://download.pytorch.org/whl/cpu/torch_stable.html
+
+# Additional dependencies
+soundfile>=0.12.1
+scipy>=1.11.0
