@@ -30,6 +30,18 @@ RUN rm -f package-lock.json && npm install
 # Copy application source code
 COPY . .
 
+# Add build-time environment variables
+ARG MONGODB_URI
+ARG JWT_SECRET
+ARG NEXTAUTH_SECRET
+ARG NEXTAUTH_URL
+
+# Set environment variables for build
+ENV MONGODB_URI=$MONGODB_URI
+ENV JWT_SECRET=$JWT_SECRET
+ENV NEXTAUTH_SECRET=$NEXTAUTH_SECRET
+ENV NEXTAUTH_URL=$NEXTAUTH_URL
+
 # Build Next.js application (skip ESLint for now)
 RUN npm run build
 
@@ -40,6 +52,7 @@ FROM node:18-slim
 RUN apt-get update && apt-get install -y \
     python3 \
     python3-pip \
+    curl \
     && rm -rf /var/lib/apt/lists/*
 
 # Set working directory
