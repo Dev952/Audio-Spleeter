@@ -72,11 +72,11 @@ COPY --from=builder /app/package*.json ./
 COPY --from=builder /app/.next ./.next
 COPY --from=builder /app/public ./public
 
-# Copy all config files (handles .ts and .js extensions)
-COPY --from=builder /app/next.config.* ./ 2>/dev/null || :
-COPY --from=builder /app/tailwind.config.* ./ 2>/dev/null || :
-COPY --from=builder /app/postcss.config.* ./ 2>/dev/null || :
-COPY --from=builder /app/tsconfig.json ./ 2>/dev/null || :
+# Copy config files using a script approach to handle missing files
+RUN mkdir -p /tmp/copy-configs
+COPY --from=builder /app/ /tmp/copy-configs/
+RUN find /tmp/copy-configs -maxdepth 1 \( -name "next.config.*" -o -name "tailwind.config.*" -o -name "postcss.config.*" -o -name "tsconfig.json" \) -exec cp {} ./ \; 2>/dev/null || true
+RUN rm -rf /tmp/copy-configs
 
 # Copy source files needed at runtime
 COPY --from=builder /app/src ./src
