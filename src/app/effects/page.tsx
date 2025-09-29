@@ -90,7 +90,7 @@ export default function EffectsPage() {
             <NavigationMenuList className="flex space-x-6 items-center">
               <NavigationMenuItem>
                 <Button
-                  onClick={() => router.push("/")}
+                  onClick={() => router.push("/home")}
                   className="cursor-pointer backdrop-blur-sm bg-white/10 hover:bg-white/20 border border-white/20 hover:border-purple-400/50 text-white font-medium px-6 py-2.5 rounded-xl transition-all duration-300 hover:shadow-xl hover:shadow-purple-500/20 group"
                 >
                   <ArrowLeft className="h-4 w-4 mr-2 transition-transform group-hover:-translate-x-1" />

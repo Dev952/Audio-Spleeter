@@ -253,7 +253,7 @@ export default function HistoryPage() {
         <div className="max-w-7xl mx-auto px-4 py-6 flex items-center justify-between">
           <div className="flex items-center space-x-4">
             <Button
-              onClick={() => router.push("/")}
+              onClick={() => router.push("/home")}
               className="cursor-pointer backdrop-blur-sm bg-white/10 hover:bg-white/20 border border-white/20 hover:border-purple-400/50 text-white font-medium px-6 py-2.5 rounded-xl transition-all duration-300 hover:shadow-xl hover:shadow-purple-500/20 group"
             >
               <ArrowLeft className="h-4 w-4 mr-2 transition-transform group-hover:-translate-x-1" />
@@ -290,7 +290,7 @@ export default function HistoryPage() {
                 here.
               </p>
               <Button
-                onClick={() => router.push("/")}
+                onClick={() => router.push("/home")}
                 className="cursor-pointer relative overflow-hidden rounded-2xl bg-gradient-to-r from-purple-600 to-pink-600 
              px-6 py-3 text-lg font-semibold text-white shadow-lg transition-all duration-300 
              hover:scale-105 hover:shadow-purple-500/40 active:scale-95"
