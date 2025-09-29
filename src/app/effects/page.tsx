@@ -9,7 +9,7 @@ import {
 } from "@/components/ui/navigation-menu";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, Music, Wand2 } from "lucide-react";
+import { ArrowLeft, TrendingUp, Wand2, Radio ,Sparkles } from "lucide-react";
 import { useEffect, useState } from "react";
 import { getCurrentUser } from "@/app/actions/auth";
 
@@ -101,12 +101,46 @@ export default function EffectsPage() {
           </NavigationMenu>
         </div>
 
-        <main className="w-full flex items-center justify-center px-4 py-8">
-          <Card className="bg-gradient-to-br from-gray-800/90 to-gray-800/90 backdrop-blur-sm text-white shadow-2xl border border-purple-500/20 rounded-2xl w-full max-w-4xl">
+        <main className="w-full flex flex-col items-center justify-center px-4 py-8">
+          <Card className="bg-[#1F1F1F] text-white shadow-2xl border border-neutral-800 rounded-2xl w-full max-w-3xl">
             <CardContent className="px-8 pb-8">
               <PitchReverb />
             </CardContent>
           </Card>
+
+          {/* Feature Cards */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mt-8 w-full max-w-5xl">
+            {[
+              {
+                title: "Pitch Enhancement",
+                description: "Fine-tune audio pitch with precision controls. Shift frequencies up or down to achieve the perfect tone for your audio tracks.",
+                icon: TrendingUp ,
+                color: " to-cyan-500"
+              },
+              {
+                title: "Reverb & Tempo Control",
+                description: "Add depth with professional reverb effects and adjust playback speed. Control tempo without affecting pitch quality.",
+                icon: Radio,
+                color: " to-pink-500"
+              },
+              {
+                title: "Lo-Fi Slow Reverb",
+                description: "One-click lo-fi magic button that creates dreamy, slowed-down tracks with vintage reverb for that perfect chill vibe.",
+                icon: Sparkles,
+                color: "to-emerald-500"
+              }
+            ].map((feature, index) => (
+              <Card key={index} className="bg-[#1F1F1F] text-white shadow-2xl border border-neutral-800 rounded-2xl w-full max-w-3xl">
+                <CardContent className="p-6 text-center space-y-4">
+                  <div className={`w-12 h-12 mx-auto rounded-xl bg-gradient-to-r ${feature.color} p-3 group-hover:scale-110 transition-transform duration-300`}>
+                    <feature.icon className="h-6 w-6 text-white" />
+                  </div>
+                  <h3 className="text-lg font-semibold text-white">{feature.title}</h3>
+                  <p className="text-purple-200 text-sm">{feature.description}</p>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
         </main>
 
         {/* Footer */}
