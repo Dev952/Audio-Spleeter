@@ -1,36 +1,170 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# YOURWAV - AI-Powered Audio Processing Studio
 
-## Getting Started
+A web-based platform for AI-powered vocal separation, audio effects, and transcription.
 
-First, run the development server:
+## Features
+
+- AI-powered vocal and instrumental separation
+- Audio effects: pitch shift, speed control, reverb
+- Automatic lyric transcription
+- Real-time audio visualization
+- Processing history and file management
+
+## Tech Stack
+
+**Frontend**
+- Next.js 15 (App Router)
+- React + TypeScript
+- Tailwind CSS + ShadCN/UI
+- WaveSurfer.js
+
+**Backend**
+- Next.js API Routes
+- MongoDB Atlas
+- Python (subprocess integration)
+
+**Audio Processing**
+- librosa, soundfile, numpy
+- PyTorch (vocal separation model)
+- FFmpeg
+- OpenAI Whisper
+
+## Prerequisites
+
+- Node.js 18+
+- Python 3.8+
+- MongoDB
+- FFmpeg
+
+## Installation
+
+### 1. Clone Repository
+
+```bash
+git clone https://github.com/yourusername/yourwav.git
+cd yourwav
+```
+
+### 2. Install Node.js Dependencies
+
+```bash
+npm install
+```
+
+### 3. Install Python Dependencies
+
+```bash
+pip install -r requirements.txt
+```
+
+### 4. Download Vocal Separation Model
+
+Download the pre-trained model from [vocal-remover](https://github.com/tsurumeso/vocal-remover):
+
+```bash
+# The vocal-remover directory should contain the model files
+# Download the baseline model from the repository
+```
+
+**Manual Download:**
+1. Visit https://github.com/tsurumeso/vocal-remover
+2. Download the baseline model file (.pth)
+3. Place it in the `vocal-remover/` directory
+
+### 5. Setup Environment Variables
+
+Create `.env.local` file:
+
+```env
+MONGODB_URI=your_mongodb_connection_string
+EMAIL_HOST=smtp.gmail.com
+EMAIL_PORT=587
+EMAIL_USER=your_email@gmail.com
+EMAIL_PASSWORD=your_app_password
+NEXTAUTH_SECRET=your_random_secret_key
+NEXTAUTH_URL=http://localhost:3000
+UPLOAD_DIR=./public/uploads
+```
+
+### 6. Install FFmpeg
+
+**Ubuntu/Debian:**
+```bash
+sudo apt-get install ffmpeg
+```
+
+**macOS:**
+```bash
+brew install ffmpeg
+```
+
+**Windows:**
+Download from [ffmpeg.org](https://ffmpeg.org/download.html)
+
+### 7. Run Development Server
 
 ```bash
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Open [http://localhost:3000](http://localhost:3000) in your browser.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Project Structure
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+```
+yourwav/
+├── audio/                # Audio processing directory
+├── public/               # Static files and uploads
+├── src/                  # Source code
+├── vocal-remover/        # Vocal separation model
+├── .env.local            # Environment variables (create this)
+├── .gitignore           
+├── components.json       # ShadCN/UI config
+├── eslint.config.mjs     # ESLint configuration
+├── middleware.ts         # Next.js middleware
+├── next-env.d.ts        
+├── next.config.ts        # Next.js configuration
+├── package.json          # Node dependencies
+├── package-lock.json    
+├── postcss.config.mjs    # PostCSS config
+├── README.md            
+├── requirements.txt      # Python dependencies
+└── tsconfig.json         # TypeScript configuration
+```
 
-## Learn More
+## Usage
 
-To learn more about Next.js, take a look at the following resources:
+1. **Register/Login** - Create an account
+2. **Upload Audio** - Upload MP3 or WAV file
+3. **Select Process** - Choose vocal separation, effects, or transcription
+4. **Download** - Get your processed audio
+5. **History** - Access all processed files from dashboard
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## API Endpoints
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+```
+POST   /api/auth/register       - User registration
+POST   /api/auth/login          - User login
+POST   /api/upload              - Upload audio file
+POST   /api/process/separate    - Separate vocals
+POST   /api/process/effects     - Apply audio effects
+POST   /api/process/transcribe  - Generate transcription
+GET    /api/history             - Get user history
+GET    /api/download/:fileId    - Download file
+```
 
-## Deploy on Vercel
+## Contributing
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+1. Fork the repository
+2. Create your feature branch (`git checkout -b feature/NewFeature`)
+3. Commit your changes (`git commit -m 'Add NewFeature'`)
+4. Push to branch (`git push origin feature/NewFeature`)
+5. Open a Pull Request
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+## License
+
+MIT License
+
+## Author
+
+Dev Trivedi
