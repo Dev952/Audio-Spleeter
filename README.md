@@ -42,7 +42,7 @@ A web-based platform for AI-powered vocal separation, audio effects, and transcr
 
 ```bash
 git clone https://github.com/yourusername/Audio-Spleeter.git
-cd yourwav
+cd Audio-Spleeter
 ```
 
 ### 2. Install Node.js Dependencies
