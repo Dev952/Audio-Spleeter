@@ -41,7 +41,7 @@ A web-based platform for AI-powered vocal separation, audio effects, and transcr
 ### 1. Clone Repository
 
 ```bash
-git clone https://github.com/yourusername/yourwav.git
+git clone https://github.com/yourusername/Audio-Spleeter.git
 cd yourwav
 ```
 
